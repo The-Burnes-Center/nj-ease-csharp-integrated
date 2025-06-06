@@ -414,15 +414,6 @@ namespace DocumentValidator.Services
                 suggestedActions.Add("Obtain a more recent tax clearance certificate");
             }
 
-            // Check for validity period
-            var hasValidityPeriod = content.Contains("valid for 180 days") ||
-                                    content.Contains("days from the date");
-            if (!hasValidityPeriod)
-            {
-                missingElements.Add("Certificate validity period is missing");
-                suggestedActions.Add("Verify the certificate indicates its validity period");
-            }
-
             // Check for signature
             var hasSignature = content.Contains("Acting Director") ||
                                Regex.IsMatch(content, @"Marita\s+R\.\s+Sciarrotta|John\s+J\.\s+Ficara", RegexOptions.IgnoreCase);
@@ -600,15 +591,6 @@ namespace DocumentValidator.Services
                 suggestedActions.Add("Obtain a more recent tax clearance certificate");
             }
 
-            // Check for validity period
-            var hasValidityPeriod = content.Contains("valid for 180 days") ||
-                                    content.Contains("days from the date");
-            if (!hasValidityPeriod)
-            {
-                missingElements.Add("Certificate validity period is missing");
-                suggestedActions.Add("Verify the certificate indicates its validity period");
-            }
-
             // Check for signature
             var hasSignature = content.Contains("Acting Director") ||
                                content.Contains("Director of Taxation") ||
@@ -753,358 +735,6 @@ namespace DocumentValidator.Services
                 MissingElements = missingElements,
                 SuggestedActions = suggestedActions
             };
-        }
-
-        private bool CheckDateWithinSixMonths(string content)
-        {
-            if (string.IsNullOrEmpty(content) || content.Length < 10) return false;
-
-            var now = DateTime.Now;
-            var sixMonthsAgo = now.AddMonths(-6);
-
-            // Match numeric date formats
-            var numericDateRegex = new Regex(@"(\d{1,2})[\/\-\.](\d{1,2})[\/\-\.](\d{4})", RegexOptions.IgnoreCase);
-            var numericMatches = numericDateRegex.Matches(content).Take(10);
-
-            foreach (Match match in numericMatches)
-            {
-                if (int.TryParse(match.Groups[1].Value, out int part1) &&
-                    int.TryParse(match.Groups[2].Value, out int part2) &&
-                    int.TryParse(match.Groups[3].Value, out int year))
-                {
-                    // Try MM/DD/YYYY
-                    try
-                    {
-                        var dateMMDDYYYY = new DateTime(year, part1, part2);
-                        if (dateMMDDYYYY >= sixMonthsAgo && dateMMDDYYYY <= now)
-                            return true;
-                    }
-                    catch (ArgumentOutOfRangeException) { }
-
-                    // Try DD/MM/YYYY
-                    try
-                    {
-                        var dateDDMMYYYY = new DateTime(year, part2, part1);
-                        if (dateDDMMYYYY >= sixMonthsAgo && dateDDMMYYYY <= now)
-                            return true;
-                    }
-                    catch (ArgumentOutOfRangeException) { }
-                }
-            }
-
-            // Match written date formats
-            var monthNames = new[] { "january", "february", "march", "april", "may", "june", "july", "august", "september", "october", "november", "december" };
-            var monthPattern = string.Join("|", monthNames);
-            var writtenDateRegex = new Regex($@"({monthPattern})\s+(\d{{1,2}})(?:st|nd|rd|th)?[,\s]*?(\d{{4}})|(\d{{1,2}})(?:st|nd|rd|th)?\s+({monthPattern})[,\s]*?(\d{{4}})", RegexOptions.IgnoreCase);
-            var writtenMatches = writtenDateRegex.Matches(content).Take(10);
-
-            foreach (Match match in writtenMatches)
-            {
-                int month, day, year;
-
-                if (!string.IsNullOrEmpty(match.Groups[1].Value))
-                {
-                    // Format: "January 15, 2023"
-                    month = Array.IndexOf(monthNames, match.Groups[1].Value.ToLower()) + 1;
-                    day = int.Parse(match.Groups[2].Value);
-                    year = int.Parse(match.Groups[3].Value);
-                }
-                else
-                {
-                    // Format: "15 January 2023"
-                    day = int.Parse(match.Groups[4].Value);
-                    month = Array.IndexOf(monthNames, match.Groups[5].Value.ToLower()) + 1;
-                    year = int.Parse(match.Groups[6].Value);
-                }
-
-                if (month > 0)
-                {
-                    try
-                    {
-                        var date = new DateTime(year, month, day);
-                        if (date >= sixMonthsAgo && date <= now)
-                            return true;
-                    }
-                    catch (ArgumentOutOfRangeException) { }
-                }
-            }
-
-            return false;
-        }
-
-        private bool CheckForDatePresence(string content)
-        {
-            if (string.IsNullOrEmpty(content) || content.Length < 10) return false;
-
-            // Check for numeric dates
-            var numericDateRegex = new Regex(@"(\d{1,2})[\/\-\.](\d{1,2})[\/\-\.](\d{2,4})", RegexOptions.IgnoreCase);
-            var numericMatches = numericDateRegex.Matches(content);
-
-            if (numericMatches.Count > 0)
-            {
-                foreach (Match match in numericMatches.Take(10))
-                {
-                    var parts = match.Value.Split(new char[] { '/', '-', '.' });
-                    if (int.TryParse(parts[0], out int num1) &&
-                        int.TryParse(parts[1], out int num2) &&
-                        int.TryParse(parts[2], out int year))
-                    {
-                        if (year >= 1900 && year <= 2100 &&
-                            num1 >= 1 && num1 <= 31 &&
-                            num2 >= 1 && num2 <= 31)
-                        {
-                            return true;
-                        }
-                    }
-                }
-            }
-
-            // Check for written dates
-            var monthNames = new[] { "january", "february", "march", "april", "may", "june", "july", "august", "september", "october", "november", "december" };
-            var monthPattern = string.Join("|", monthNames);
-            var writtenDateRegex = new Regex($@"({monthPattern})\s+(\d{{1,2}})(?:st|nd|rd|th)?[,\s]*?(\d{{4}})|(\d{{1,2}})(?:st|nd|rd|th)?\s+({monthPattern})[,\s]*?(\d{{4}})", RegexOptions.IgnoreCase);
-
-            if (writtenDateRegex.IsMatch(content))
-            {
-                return true;
-            }
-
-            // Match ordinal date formats like "13th day of May, 2023"
-            var ordinalDateRegex = new Regex(@"(\d{1,2})(st|nd|rd|th)?\s+day\s+of\s+(\w+)[,\s]*(\d{4})", RegexOptions.IgnoreCase);
-            var ordinalMatches = ordinalDateRegex.Matches(content);
-
-            if (ordinalMatches.Count > 0)
-            {
-                return true;
-            }
-
-            // Match year-only formats like "2023" or "©2023" (but be more specific to avoid false positives)
-            var yearOnlyRegex = new Regex(@"(?:©\s*|copyright\s*|adopted\s*|effective\s*|revised\s*|amended\s*|dated\s*|year\s*)(\d{4})", RegexOptions.IgnoreCase);
-            var yearMatches = yearOnlyRegex.Matches(content);
-
-            if (yearMatches.Count > 0)
-            {
-                return true;
-            }
-
-            return false;
-        }
-
-        private (string detectedType, List<DocumentTypeScore> scores) DetectDocumentTypeWithScoresAsync(string content, string contentLower, IReadOnlyList<DocumentPage> pages, IReadOnlyList<DocumentKeyValuePair> keyValuePairs)
-        {
-            var documentTypePatterns = new List<DocumentTypePattern>
-            {
-                new DocumentTypePattern
-                {
-                    Type = "tax-clearance-online",
-                    Keywords = new List<KeywordWeight>
-                    {
-                        new KeywordWeight { Text = "clearance certificate", Weight = 70 },
-                        new KeywordWeight { Text = "serial#", Weight = 70 },
-                        new KeywordWeight { Text = "state of new jersey", Weight = 20 },
-                        new KeywordWeight { Text = "division of taxation", Weight = 40 },
-                        new KeywordWeight { Text = "business assistance", Weight = 50 },
-                        new KeywordWeight { Text = "taxpayer name", Weight = 20 },
-                        new KeywordWeight { Text = "agency", Weight = 30 }
-                    },
-                    Threshold = 100
-                },
-                new DocumentTypePattern
-                {
-                    Type = "tax-clearance-manual",
-                    Keywords = new List<KeywordWeight>
-                    {
-                        new KeywordWeight { Text = "clearance certificate", Weight = 70 },
-                        new KeywordWeight { Text = "batc", Weight = 100 },
-                        new KeywordWeight { Text = "manual", Weight = 70 },
-                        new KeywordWeight { Text = "business assistance", Weight = 50 },
-                        new KeywordWeight { Text = "state of new jersey", Weight = 20 },
-                        new KeywordWeight { Text = "division of taxation", Weight = 40 },
-                        new KeywordWeight { Text = "taxpayer name", Weight = 20 },
-                        new KeywordWeight { Text = "agency", Weight = 30 }
-                    },
-                    Threshold = 100
-                },
-                new DocumentTypePattern
-                {
-                    Type = "cert-formation",
-                    Keywords = new List<KeywordWeight>
-                    {
-                        new KeywordWeight { Text = "certificate of formation", Weight = 80 },
-                        new KeywordWeight { Text = "short form", Weight = 50 },
-                        new KeywordWeight { Text = "long form", Weight = 50 },
-                        new KeywordWeight { Text = "good standing", Weight = 50 },
-                        new KeywordWeight { Text = "new jersey department of the treasury", Weight = 20 },
-                        new KeywordWeight { Text = "division of revenue", Weight = 20 },
-                        new KeywordWeight { Text = "above-named", Weight = 30 },
-                        new KeywordWeight { Text = "registered agent", Weight = 30 },
-                        new KeywordWeight { Text = "certificate", Weight = 30 }
-                    },
-                    Threshold = 100
-                },
-                new DocumentTypePattern
-                {
-                    Type = "cert-formation-independent",
-                    Keywords = new List<KeywordWeight>
-                    {
-                        new KeywordWeight { Text = "certificate of formation", Weight = 80 },
-                        new KeywordWeight { Text = "organizer", Weight = 80 },
-                        new KeywordWeight { Text = "short form", Weight = 50 },
-                        new KeywordWeight { Text = "long form", Weight = 50 },
-                        new KeywordWeight { Text = "good standing", Weight = 50 },
-                        new KeywordWeight { Text = "state of new jersey", Weight = 40 },
-                        new KeywordWeight { Text = "registered agent", Weight = 30 },
-                        new KeywordWeight { Text = "in witness whereof", Weight = 30 },
-                        new KeywordWeight { Text = "first", Weight = 30 },
-                        new KeywordWeight { Text = "second", Weight = 30 },
-                        new KeywordWeight { Text = "third", Weight = 30 },
-                        new KeywordWeight { Text = "fourth", Weight = 30 }
-                    },
-                    Threshold = 100
-                },
-                new DocumentTypePattern
-                {
-                    Type = "cert-incorporation",
-                    Keywords = new List<KeywordWeight>
-                    {
-                        new KeywordWeight { Text = "certificate of inc", Weight = 80 },
-                        new KeywordWeight { Text = "new jersey department of the treasury", Weight = 50 },
-                        new KeywordWeight { Text = "division of revenue and enterprise services", Weight = 40 },
-                        new KeywordWeight { Text = "board of directors", Weight = 30 },
-                        new KeywordWeight { Text = "certificate", Weight = 30 },
-                        new KeywordWeight { Text = "state treasurer", Weight = 30 },
-                        new KeywordWeight { Text = "great seal", Weight = 30 }
-                    },
-                    Threshold = 100
-                },
-                new DocumentTypePattern
-                {
-                    Type = "cert-trade-name",
-                    Keywords = new List<KeywordWeight>
-                    {
-                        new KeywordWeight { Text = "trade name", Weight = 70 },
-                        new KeywordWeight { Text = "certificate", Weight = 30 },
-                        new KeywordWeight { Text = "filing", Weight = 20 },
-                        new KeywordWeight { Text = "trade name certificate", Weight = 80 }
-                    },
-                    Threshold = 90
-                },
-                new DocumentTypePattern
-                {
-                    Type = "cert-alternative-name",
-                    Keywords = new List<KeywordWeight>
-                    {
-                        new KeywordWeight { Text = "alternate name", Weight = 80 },
-                        new KeywordWeight { Text = "registration of alternate name", Weight = 70 },
-                        new KeywordWeight { Text = "division of revenue", Weight = 50 },
-                        new KeywordWeight { Text = "state of new jersey", Weight = 40 },
-                        new KeywordWeight { Text = "po box", Weight = 40 }
-                    },
-                    Threshold = 90
-                },
-                new DocumentTypePattern
-                {
-                    Type = "operating-agreement",
-                    Keywords = new List<KeywordWeight>
-                    {
-                        new KeywordWeight { Text = "operating agreement", Weight = 80 },
-                        new KeywordWeight { Text = "limited liability company", Weight = 40 },
-                        new KeywordWeight { Text = "llc", Weight = 30 },
-                        new KeywordWeight { Text = "member", Weight = 30 },
-                        new KeywordWeight { Text = "management", Weight = 30 },
-                        new KeywordWeight { Text = "article", Weight = 20 }
-                    },
-                    Threshold = 100
-                },
-                new DocumentTypePattern
-                {
-                    Type = "irs-determination",
-                    Keywords = new List<KeywordWeight>
-                    {
-                        new KeywordWeight { Text = "internal revenue service", Weight = 70 },
-                        new KeywordWeight { Text = "irs", Weight = 40 },
-                        new KeywordWeight { Text = "determination letter", Weight = 60 },
-                        new KeywordWeight { Text = "determination", Weight = 30 },
-                        new KeywordWeight { Text = "exempt", Weight = 40 },
-                        new KeywordWeight { Text = "tax exempt", Weight = 50 },
-                        new KeywordWeight { Text = "501", Weight = 30 },
-                        new KeywordWeight { Text = "department of the treasury", Weight = 40 }
-                    },
-                    Threshold = 120
-                },
-                new DocumentTypePattern
-                {
-                    Type = "bylaws",
-                    Keywords = new List<KeywordWeight>
-                    {
-                        new KeywordWeight { Text = "bylaws", Weight = 80 },
-                        new KeywordWeight { Text = "by-laws", Weight = 80 },
-                        new KeywordWeight { Text = "corporation", Weight = 30 },
-                        new KeywordWeight { Text = "directors", Weight = 30 },
-                        new KeywordWeight { Text = "board", Weight = 20 },
-                        new KeywordWeight { Text = "article", Weight = 30 },
-                        new KeywordWeight { Text = "amendment", Weight = 30 }
-                    },
-                    Threshold = 100
-                },
-                new DocumentTypePattern
-                {
-                    Type = "cert-authority",
-                    Keywords = new List<KeywordWeight>
-                    {
-                        new KeywordWeight { Text = "certificate of authority", Weight = 80 },
-                        new KeywordWeight { Text = "new jersey sales & use tax", Weight = 50 },
-                        new KeywordWeight { Text = "n.j.s.a", Weight = 40 },
-                        new KeywordWeight { Text = "division of taxation", Weight = 40 },
-                        new KeywordWeight { Text = "state of new jersey", Weight = 30 },
-                        new KeywordWeight { Text = "authorized", Weight = 30 },
-                        new KeywordWeight { Text = "secretary of state", Weight = 30 }
-                    },
-                    Threshold = 100
-                },
-                new DocumentTypePattern
-                {
-                    Type = "cert-authority-auto",
-                    Keywords = new List<KeywordWeight>
-                    {
-                        new KeywordWeight { Text = "certificate of authority", Weight = 80 },
-                        new KeywordWeight { Text = "department of the treasury", Weight = 40 },
-                        new KeywordWeight { Text = "state of new jersey", Weight = 30 },
-                        new KeywordWeight { Text = "foreign", Weight = 30 },
-                        new KeywordWeight { Text = "authorized", Weight = 30 },
-                        new KeywordWeight { Text = "secretary of state", Weight = 30 },
-                        new KeywordWeight { Text = "lawfully carried on", Weight = 30 }
-                    },
-                    Threshold = 100
-                }
-            };
-
-            var scores = documentTypePatterns.Select(docType => new DocumentTypeScore
-            {
-                Type = docType.Type,
-                Score = CalculateScore(docType, contentLower),
-                Threshold = docType.Threshold
-            }).OrderByDescending(s => s.Score).ToList();
-
-            var bestMatch = scores.FirstOrDefault(score => score.Score >= score.Threshold);
-            var detectedType = bestMatch?.Type ?? "unknown";
-
-            // Special case for distinguishing between tax clearance types if we detected it as a general tax clearance
-            if (detectedType == "unknown" && contentLower.Contains("clearance certificate") && contentLower.Contains("division of taxation"))
-            {
-                // Check for online-specific indicators
-                var manualIndicators = new[] { "manual", "batc" };
-                var isManual = manualIndicators.Any(indicator => contentLower.Contains(indicator)) || pages.Count <= 2;
-
-                detectedType = isManual ? "tax-clearance-manual" : "tax-clearance-online";
-            }
-
-            return (detectedType, scores);
-        }
-
-        private int CalculateScore(DocumentTypePattern docType, string contentLower)
-        {
-            return docType.Keywords.Where(keyword => contentLower.Contains(keyword.Text.ToLower())).Sum(keyword => keyword.Weight);
         }
 
         private DocumentValidationResult ValidateCertificateOfFormation(string content, string contentLower, IReadOnlyList<DocumentPage> pages, IReadOnlyList<DocumentKeyValuePair> keyValuePairs, Dictionary<string, string> formFields)
@@ -1621,6 +1251,358 @@ namespace DocumentValidator.Services
                 SuggestedActions = suggestedActions,
                 DetectedOrganizationName = detectedOrganizationName
             };
+        }
+
+        private bool CheckDateWithinSixMonths(string content)
+        {
+            if (string.IsNullOrEmpty(content) || content.Length < 10) return false;
+
+            var now = DateTime.Now;
+            var sixMonthsAgo = now.AddMonths(-6);
+
+            // Match numeric date formats
+            var numericDateRegex = new Regex(@"(\d{1,2})[\/\-\.](\d{1,2})[\/\-\.](\d{4})", RegexOptions.IgnoreCase);
+            var numericMatches = numericDateRegex.Matches(content).Take(10);
+
+            foreach (Match match in numericMatches)
+            {
+                if (int.TryParse(match.Groups[1].Value, out int part1) &&
+                    int.TryParse(match.Groups[2].Value, out int part2) &&
+                    int.TryParse(match.Groups[3].Value, out int year))
+                {
+                    // Try MM/DD/YYYY
+                    try
+                    {
+                        var dateMMDDYYYY = new DateTime(year, part1, part2);
+                        if (dateMMDDYYYY >= sixMonthsAgo && dateMMDDYYYY <= now)
+                            return true;
+                    }
+                    catch (ArgumentOutOfRangeException) { }
+
+                    // Try DD/MM/YYYY
+                    try
+                    {
+                        var dateDDMMYYYY = new DateTime(year, part2, part1);
+                        if (dateDDMMYYYY >= sixMonthsAgo && dateDDMMYYYY <= now)
+                            return true;
+                    }
+                    catch (ArgumentOutOfRangeException) { }
+                }
+            }
+
+            // Match written date formats
+            var monthNames = new[] { "january", "february", "march", "april", "may", "june", "july", "august", "september", "october", "november", "december" };
+            var monthPattern = string.Join("|", monthNames);
+            var writtenDateRegex = new Regex($@"({monthPattern})\s+(\d{{1,2}})(?:st|nd|rd|th)?[,\s]*?(\d{{4}})|(\d{{1,2}})(?:st|nd|rd|th)?\s+({monthPattern})[,\s]*?(\d{{4}})", RegexOptions.IgnoreCase);
+            var writtenMatches = writtenDateRegex.Matches(content).Take(10);
+
+            foreach (Match match in writtenMatches)
+            {
+                int month, day, year;
+
+                if (!string.IsNullOrEmpty(match.Groups[1].Value))
+                {
+                    // Format: "January 15, 2023"
+                    month = Array.IndexOf(monthNames, match.Groups[1].Value.ToLower()) + 1;
+                    day = int.Parse(match.Groups[2].Value);
+                    year = int.Parse(match.Groups[3].Value);
+                }
+                else
+                {
+                    // Format: "15 January 2023"
+                    day = int.Parse(match.Groups[4].Value);
+                    month = Array.IndexOf(monthNames, match.Groups[5].Value.ToLower()) + 1;
+                    year = int.Parse(match.Groups[6].Value);
+                }
+
+                if (month > 0)
+                {
+                    try
+                    {
+                        var date = new DateTime(year, month, day);
+                        if (date >= sixMonthsAgo && date <= now)
+                            return true;
+                    }
+                    catch (ArgumentOutOfRangeException) { }
+                }
+            }
+
+            return false;
+        }
+
+        private bool CheckForDatePresence(string content)
+        {
+            if (string.IsNullOrEmpty(content) || content.Length < 10) return false;
+
+            // Check for numeric dates
+            var numericDateRegex = new Regex(@"(\d{1,2})[\/\-\.](\d{1,2})[\/\-\.](\d{2,4})", RegexOptions.IgnoreCase);
+            var numericMatches = numericDateRegex.Matches(content);
+
+            if (numericMatches.Count > 0)
+            {
+                foreach (Match match in numericMatches.Take(10))
+                {
+                    var parts = match.Value.Split(new char[] { '/', '-', '.' });
+                    if (int.TryParse(parts[0], out int num1) &&
+                        int.TryParse(parts[1], out int num2) &&
+                        int.TryParse(parts[2], out int year))
+                    {
+                        if (year >= 1900 && year <= 2100 &&
+                            num1 >= 1 && num1 <= 31 &&
+                            num2 >= 1 && num2 <= 31)
+                        {
+                            return true;
+                        }
+                    }
+                }
+            }
+
+            // Check for written dates
+            var monthNames = new[] { "january", "february", "march", "april", "may", "june", "july", "august", "september", "october", "november", "december" };
+            var monthPattern = string.Join("|", monthNames);
+            var writtenDateRegex = new Regex($@"({monthPattern})\s+(\d{{1,2}})(?:st|nd|rd|th)?[,\s]*?(\d{{4}})|(\d{{1,2}})(?:st|nd|rd|th)?\s+({monthPattern})[,\s]*?(\d{{4}})", RegexOptions.IgnoreCase);
+
+            if (writtenDateRegex.IsMatch(content))
+            {
+                return true;
+            }
+
+            // Match ordinal date formats like "13th day of May, 2023"
+            var ordinalDateRegex = new Regex(@"(\d{1,2})(st|nd|rd|th)?\s+day\s+of\s+(\w+)[,\s]*(\d{4})", RegexOptions.IgnoreCase);
+            var ordinalMatches = ordinalDateRegex.Matches(content);
+
+            if (ordinalMatches.Count > 0)
+            {
+                return true;
+            }
+
+            // Match year-only formats like "2023" or "©2023" (but be more specific to avoid false positives)
+            var yearOnlyRegex = new Regex(@"(?:©\s*|copyright\s*|adopted\s*|effective\s*|revised\s*|amended\s*|dated\s*|year\s*)(\d{4})", RegexOptions.IgnoreCase);
+            var yearMatches = yearOnlyRegex.Matches(content);
+
+            if (yearMatches.Count > 0)
+            {
+                return true;
+            }
+
+            return false;
+        }
+
+        private (string detectedType, List<DocumentTypeScore> scores) DetectDocumentTypeWithScoresAsync(string content, string contentLower, IReadOnlyList<DocumentPage> pages, IReadOnlyList<DocumentKeyValuePair> keyValuePairs)
+        {
+            var documentTypePatterns = new List<DocumentTypePattern>
+            {
+                new DocumentTypePattern
+                {
+                    Type = "tax-clearance-online",
+                    Keywords = new List<KeywordWeight>
+                    {
+                        new KeywordWeight { Text = "clearance certificate", Weight = 70 },
+                        new KeywordWeight { Text = "serial#", Weight = 70 },
+                        new KeywordWeight { Text = "state of new jersey", Weight = 20 },
+                        new KeywordWeight { Text = "division of taxation", Weight = 40 },
+                        new KeywordWeight { Text = "business assistance", Weight = 50 },
+                        new KeywordWeight { Text = "taxpayer name", Weight = 20 },
+                        new KeywordWeight { Text = "agency", Weight = 30 }
+                    },
+                    Threshold = 100
+                },
+                new DocumentTypePattern
+                {
+                    Type = "tax-clearance-manual",
+                    Keywords = new List<KeywordWeight>
+                    {
+                        new KeywordWeight { Text = "clearance certificate", Weight = 70 },
+                        new KeywordWeight { Text = "batc", Weight = 100 },
+                        new KeywordWeight { Text = "manual", Weight = 70 },
+                        new KeywordWeight { Text = "business assistance", Weight = 50 },
+                        new KeywordWeight { Text = "state of new jersey", Weight = 20 },
+                        new KeywordWeight { Text = "division of taxation", Weight = 40 },
+                        new KeywordWeight { Text = "taxpayer name", Weight = 20 },
+                        new KeywordWeight { Text = "agency", Weight = 30 }
+                    },
+                    Threshold = 100
+                },
+                new DocumentTypePattern
+                {
+                    Type = "cert-formation",
+                    Keywords = new List<KeywordWeight>
+                    {
+                        new KeywordWeight { Text = "certificate of formation", Weight = 80 },
+                        new KeywordWeight { Text = "short form", Weight = 50 },
+                        new KeywordWeight { Text = "long form", Weight = 50 },
+                        new KeywordWeight { Text = "good standing", Weight = 50 },
+                        new KeywordWeight { Text = "new jersey department of the treasury", Weight = 20 },
+                        new KeywordWeight { Text = "division of revenue", Weight = 20 },
+                        new KeywordWeight { Text = "above-named", Weight = 30 },
+                        new KeywordWeight { Text = "registered agent", Weight = 30 },
+                        new KeywordWeight { Text = "certificate", Weight = 30 }
+                    },
+                    Threshold = 100
+                },
+                new DocumentTypePattern
+                {
+                    Type = "cert-formation-independent",
+                    Keywords = new List<KeywordWeight>
+                    {
+                        new KeywordWeight { Text = "certificate of formation", Weight = 80 },
+                        new KeywordWeight { Text = "organizer", Weight = 80 },
+                        new KeywordWeight { Text = "short form", Weight = 50 },
+                        new KeywordWeight { Text = "long form", Weight = 50 },
+                        new KeywordWeight { Text = "good standing", Weight = 50 },
+                        new KeywordWeight { Text = "state of new jersey", Weight = 40 },
+                        new KeywordWeight { Text = "registered agent", Weight = 30 },
+                        new KeywordWeight { Text = "in witness whereof", Weight = 30 },
+                        new KeywordWeight { Text = "first", Weight = 30 },
+                        new KeywordWeight { Text = "second", Weight = 30 },
+                        new KeywordWeight { Text = "third", Weight = 30 },
+                        new KeywordWeight { Text = "fourth", Weight = 30 }
+                    },
+                    Threshold = 100
+                },
+                new DocumentTypePattern
+                {
+                    Type = "cert-incorporation",
+                    Keywords = new List<KeywordWeight>
+                    {
+                        new KeywordWeight { Text = "certificate of inc", Weight = 80 },
+                        new KeywordWeight { Text = "new jersey department of the treasury", Weight = 50 },
+                        new KeywordWeight { Text = "division of revenue and enterprise services", Weight = 40 },
+                        new KeywordWeight { Text = "board of directors", Weight = 30 },
+                        new KeywordWeight { Text = "certificate", Weight = 30 },
+                        new KeywordWeight { Text = "state treasurer", Weight = 30 },
+                        new KeywordWeight { Text = "great seal", Weight = 30 }
+                    },
+                    Threshold = 100
+                },
+                new DocumentTypePattern
+                {
+                    Type = "cert-trade-name",
+                    Keywords = new List<KeywordWeight>
+                    {
+                        new KeywordWeight { Text = "trade name", Weight = 70 },
+                        new KeywordWeight { Text = "certificate", Weight = 30 },
+                        new KeywordWeight { Text = "filing", Weight = 20 },
+                        new KeywordWeight { Text = "trade name certificate", Weight = 80 }
+                    },
+                    Threshold = 90
+                },
+                new DocumentTypePattern
+                {
+                    Type = "cert-alternative-name",
+                    Keywords = new List<KeywordWeight>
+                    {
+                        new KeywordWeight { Text = "alternate name", Weight = 80 },
+                        new KeywordWeight { Text = "registration of alternate name", Weight = 70 },
+                        new KeywordWeight { Text = "division of revenue", Weight = 50 },
+                        new KeywordWeight { Text = "state of new jersey", Weight = 40 },
+                        new KeywordWeight { Text = "po box", Weight = 40 }
+                    },
+                    Threshold = 90
+                },
+                new DocumentTypePattern
+                {
+                    Type = "operating-agreement",
+                    Keywords = new List<KeywordWeight>
+                    {
+                        new KeywordWeight { Text = "operating agreement", Weight = 80 },
+                        new KeywordWeight { Text = "limited liability company", Weight = 40 },
+                        new KeywordWeight { Text = "llc", Weight = 30 },
+                        new KeywordWeight { Text = "member", Weight = 30 },
+                        new KeywordWeight { Text = "management", Weight = 30 },
+                        new KeywordWeight { Text = "article", Weight = 20 }
+                    },
+                    Threshold = 100
+                },
+                new DocumentTypePattern
+                {
+                    Type = "irs-determination",
+                    Keywords = new List<KeywordWeight>
+                    {
+                        new KeywordWeight { Text = "internal revenue service", Weight = 70 },
+                        new KeywordWeight { Text = "irs", Weight = 40 },
+                        new KeywordWeight { Text = "determination letter", Weight = 60 },
+                        new KeywordWeight { Text = "determination", Weight = 30 },
+                        new KeywordWeight { Text = "exempt", Weight = 40 },
+                        new KeywordWeight { Text = "tax exempt", Weight = 50 },
+                        new KeywordWeight { Text = "501", Weight = 30 },
+                        new KeywordWeight { Text = "department of the treasury", Weight = 40 }
+                    },
+                    Threshold = 120
+                },
+                new DocumentTypePattern
+                {
+                    Type = "bylaws",
+                    Keywords = new List<KeywordWeight>
+                    {
+                        new KeywordWeight { Text = "bylaws", Weight = 80 },
+                        new KeywordWeight { Text = "by-laws", Weight = 80 },
+                        new KeywordWeight { Text = "corporation", Weight = 30 },
+                        new KeywordWeight { Text = "directors", Weight = 30 },
+                        new KeywordWeight { Text = "board", Weight = 20 },
+                        new KeywordWeight { Text = "article", Weight = 30 },
+                        new KeywordWeight { Text = "amendment", Weight = 30 }
+                    },
+                    Threshold = 100
+                },
+                new DocumentTypePattern
+                {
+                    Type = "cert-authority",
+                    Keywords = new List<KeywordWeight>
+                    {
+                        new KeywordWeight { Text = "certificate of authority", Weight = 80 },
+                        new KeywordWeight { Text = "new jersey sales & use tax", Weight = 50 },
+                        new KeywordWeight { Text = "n.j.s.a", Weight = 40 },
+                        new KeywordWeight { Text = "division of taxation", Weight = 40 },
+                        new KeywordWeight { Text = "state of new jersey", Weight = 30 },
+                        new KeywordWeight { Text = "authorized", Weight = 30 },
+                        new KeywordWeight { Text = "secretary of state", Weight = 30 }
+                    },
+                    Threshold = 100
+                },
+                new DocumentTypePattern
+                {
+                    Type = "cert-authority-auto",
+                    Keywords = new List<KeywordWeight>
+                    {
+                        new KeywordWeight { Text = "certificate of authority", Weight = 80 },
+                        new KeywordWeight { Text = "department of the treasury", Weight = 40 },
+                        new KeywordWeight { Text = "state of new jersey", Weight = 30 },
+                        new KeywordWeight { Text = "foreign", Weight = 30 },
+                        new KeywordWeight { Text = "authorized", Weight = 30 },
+                        new KeywordWeight { Text = "secretary of state", Weight = 30 },
+                        new KeywordWeight { Text = "lawfully carried on", Weight = 30 }
+                    },
+                    Threshold = 100
+                }
+            };
+
+            var scores = documentTypePatterns.Select(docType => new DocumentTypeScore
+            {
+                Type = docType.Type,
+                Score = CalculateScore(docType, contentLower),
+                Threshold = docType.Threshold
+            }).OrderByDescending(s => s.Score).ToList();
+
+            var bestMatch = scores.FirstOrDefault(score => score.Score >= score.Threshold);
+            var detectedType = bestMatch?.Type ?? "unknown";
+
+            // Special case for distinguishing between tax clearance types if we detected it as a general tax clearance
+            if (detectedType == "unknown" && contentLower.Contains("clearance certificate") && contentLower.Contains("division of taxation"))
+            {
+                // Check for online-specific indicators
+                var manualIndicators = new[] { "manual", "batc" };
+                var isManual = manualIndicators.Any(indicator => contentLower.Contains(indicator)) || pages.Count <= 2;
+
+                detectedType = isManual ? "tax-clearance-manual" : "tax-clearance-online";
+            }
+
+            return (detectedType, scores);
+        }
+
+        private int CalculateScore(DocumentTypePattern docType, string contentLower)
+        {
+            return docType.Keywords.Where(keyword => contentLower.Contains(keyword.Text.ToLower())).Sum(keyword => keyword.Weight);
         }
     }
 
