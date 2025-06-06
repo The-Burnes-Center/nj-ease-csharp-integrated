@@ -235,8 +235,6 @@ namespace DocumentValidator.Services
                 "cert-trade-name" => ValidateCertificateOfTradeName(options.Content, contentLower, options.Pages, options.KeyValuePairs),
                 "cert-formation" => ValidateCertificateOfFormation(options.Content, contentLower, options.Pages, options.KeyValuePairs, options.FormFields),
                 "cert-formation-independent" => ValidateCertificateOfFormationIndependent(options.Content, contentLower, options.Pages, options.KeyValuePairs, options.FormFields),
-                "cert-good-standing-long" => ValidateCertificateOfGoodStandingLong(options.Content, contentLower, options.Pages, options.KeyValuePairs, options.FormFields),
-                "cert-good-standing-short" => ValidateCertificateOfGoodStandingShort(options.Content, contentLower, options.Pages, options.KeyValuePairs, options.FormFields),
                 "operating-agreement" => ValidateOperatingAgreement(options.Content, contentLower, options.Pages, options.KeyValuePairs, options.FormFields),
                 "cert-incorporation" => ValidateCertificateOfIncorporation(options.Content, contentLower, options.Pages, options.KeyValuePairs, options.FormFields),
                 "irs-determination" => ValidateIRSDeterminationLetter(options.Content, contentLower, options.Pages, options.KeyValuePairs),
@@ -933,6 +931,9 @@ namespace DocumentValidator.Services
                     Keywords = new List<KeywordWeight>
                     {
                         new KeywordWeight { Text = "certificate of formation", Weight = 80 },
+                        new KeywordWeight { Text = "short form", Weight = 50 },
+                        new KeywordWeight { Text = "long form", Weight = 50 },
+                        new KeywordWeight { Text = "good standing", Weight = 50 },
                         new KeywordWeight { Text = "new jersey department of the treasury", Weight = 20 },
                         new KeywordWeight { Text = "division of revenue", Weight = 20 },
                         new KeywordWeight { Text = "above-named", Weight = 30 },
@@ -948,6 +949,9 @@ namespace DocumentValidator.Services
                     {
                         new KeywordWeight { Text = "certificate of formation", Weight = 80 },
                         new KeywordWeight { Text = "organizer", Weight = 80 },
+                        new KeywordWeight { Text = "short form", Weight = 50 },
+                        new KeywordWeight { Text = "long form", Weight = 50 },
+                        new KeywordWeight { Text = "good standing", Weight = 50 },
                         new KeywordWeight { Text = "state of new jersey", Weight = 40 },
                         new KeywordWeight { Text = "registered agent", Weight = 30 },
                         new KeywordWeight { Text = "in witness whereof", Weight = 30 },
@@ -972,42 +976,6 @@ namespace DocumentValidator.Services
                         new KeywordWeight { Text = "great seal", Weight = 30 }
                     },
                     Threshold = 100
-                },
-                new DocumentTypePattern
-                {
-                    Type = "cert-good-standing-long",
-                    Keywords = new List<KeywordWeight>
-                    {
-                        new KeywordWeight { Text = "long form", Weight = 80 },
-                        new KeywordWeight { Text = "good standing", Weight = 80 },
-                        new KeywordWeight { Text = "officers and directors", Weight = 50 },
-                        new KeywordWeight { Text = "annual reports", Weight = 40 },
-                        new KeywordWeight { Text = "department of the treasury", Weight = 40 },
-                        new KeywordWeight { Text = "state of new jersey", Weight = 40 },
-                        new KeywordWeight { Text = "active business", Weight = 30 },
-                        new KeywordWeight { Text = "certificate", Weight = 30 },
-                        new KeywordWeight { Text = "state treasurer", Weight = 30 },
-                        new KeywordWeight { Text = "great seal", Weight = 30 }
-                    },
-                    Threshold = 100
-                },
-                new DocumentTypePattern
-                {
-                    Type = "cert-good-standing-short",
-                    Keywords = new List<KeywordWeight>
-                    {
-                        new KeywordWeight { Text = "short form", Weight = 80 },
-                        new KeywordWeight { Text = "good standing", Weight = 80 },
-                        new KeywordWeight { Text = "officers and directors", Weight = 50 },
-                        new KeywordWeight { Text = "annual reports", Weight = 40 },
-                        new KeywordWeight { Text = "department of the treasury", Weight = 40 },
-                        new KeywordWeight { Text = "state of new jersey", Weight = 40 },
-                        new KeywordWeight { Text = "active business", Weight = 30 },
-                        new KeywordWeight { Text = "certificate", Weight = 30 },
-                        new KeywordWeight { Text = "state treasurer", Weight = 30 },
-                        new KeywordWeight { Text = "great seal", Weight = 30 }
-                    },
-                    Threshold = 90
                 },
                 new DocumentTypePattern
                 {
@@ -1129,15 +1097,6 @@ namespace DocumentValidator.Services
                 var isManual = manualIndicators.Any(indicator => contentLower.Contains(indicator)) || pages.Count <= 2;
 
                 detectedType = isManual ? "tax-clearance-manual" : "tax-clearance-online";
-            }
-
-            // Special case for good standing certificates
-            if (detectedType == "unknown" && contentLower.Contains("certificate") && contentLower.Contains("good standing"))
-            {
-                var longFormIndicators = new[] { "all annual reports", "taxes have been paid", "business entity", "with officers and directors" };
-                var isLongForm = longFormIndicators.Any(indicator => contentLower.Contains(indicator));
-
-                detectedType = isLongForm ? "cert-good-standing-long" : "cert-good-standing-short";
             }
 
             return (detectedType, scores);
@@ -1320,205 +1279,6 @@ namespace DocumentValidator.Services
             {
                 missingElements.Add("Signature of authorized state official is missing");
                 suggestedActions.Add("Verify document has been signed by an authorized state official");
-            }
-
-            return new DocumentValidationResult
-            {
-                MissingElements = missingElements,
-                SuggestedActions = suggestedActions,
-                DetectedOrganizationName = detectedOrganizationName
-            };
-        }
-
-        private DocumentValidationResult ValidateCertificateOfGoodStandingLong(string content, string contentLower, IReadOnlyList<DocumentPage> pages, IReadOnlyList<DocumentKeyValuePair> keyValuePairs, Dictionary<string, string> formFields)
-        {
-            var missingElements = new List<string>();
-            var suggestedActions = new List<string>();
-            string? detectedOrganizationName = null;
-
-            // Extract organization name - look for the line after "LONG FORM STANDING WITH OFFICERS AND DIRECTORS"
-            var lines = content.Split('\n');
-            var longFormIndex = Array.FindIndex(lines, line =>
-                line.Contains("LONG FORM STANDING WITH OFFICERS AND DIRECTORS") ||
-                line.Contains("Long Form Standing with Officers and Directors"));
-
-            // If we found the header, organization name should be the next non-empty line
-            if (longFormIndex != -1 && longFormIndex + 1 < lines.Length)
-            {
-                for (int i = longFormIndex + 1; i < lines.Length; i++)
-                {
-                    var line = lines[i].Trim();
-                    if (line.Length > 3)
-                    {
-                        detectedOrganizationName = line;
-                        break;
-                    }
-                }
-            }
-
-            // Check for organization name match if provided
-            if (formFields.ContainsKey("organizationName") && !string.IsNullOrEmpty(detectedOrganizationName))
-            {
-                if (!OrganizationNamesMatch(formFields["organizationName"], detectedOrganizationName))
-                {
-                    missingElements.Add("Organization name doesn't match the one on the certificate");
-                    suggestedActions.Add("Verify that the correct organization name was entered");
-                }
-            }
-
-            // Rest of validation checks
-            var hasLongFormTitle = contentLower.Contains("long form standing") ||
-                                  contentLower.Contains("long form certificate") ||
-                                  contentLower.Contains("with officers and directors");
-
-            if (!hasLongFormTitle)
-            {
-                missingElements.Add("Required keyword: 'Long Form Standing declaration'");
-                suggestedActions.Add("Verify this is a Long Form Certificate of Good Standing with Officers and Directors");
-            }
-
-            var hasGoodStanding = contentLower.Contains("good standing") &&
-                                  contentLower.Contains("active");
-
-            if (!hasGoodStanding)
-            {
-                missingElements.Add("Active and good standing status is missing");
-                suggestedActions.Add("Verify entity is active and in good standing with the State of NJ");
-            }
-
-            var hasTreasury = contentLower.Contains("department of the treasury");
-
-            if (!hasTreasury)
-            {
-                missingElements.Add("Required keyword: 'Department of the Treasury'");
-                suggestedActions.Add("Verify certificate is issued by NJ Department of Treasury");
-            }
-
-            var hasDivision = contentLower.Contains("division of revenue & enterprise services") ||
-                             contentLower.Contains("division of revenue and enterprise services");
-
-            if (!hasDivision)
-            {
-                missingElements.Add("Required keyword: 'Division of Revenue & Enterprise Services'");
-                suggestedActions.Add("Verify certificate mentions Division of Revenue & Enterprise Services");
-            }
-
-            var hasOfficersDirectors = contentLower.Contains("officers") &&
-                                      contentLower.Contains("directors");
-
-            if (!hasOfficersDirectors)
-            {
-                missingElements.Add("Officers/Directors information is missing");
-                suggestedActions.Add("Verify the certificate includes information about officers and directors");
-            }
-
-            var hasRegisteredInfo = contentLower.Contains("registered agent") ||
-                                   contentLower.Contains("registered office");
-
-            if (!hasRegisteredInfo)
-            {
-                missingElements.Add("Registered agent/office information is missing");
-                suggestedActions.Add("Verify the certificate includes registered agent and office information");
-            }
-
-            var hasStateSeal = contentLower.Contains("official seal") ||
-                              contentLower.Contains("seal at trenton") ||
-                              contentLower.Contains("great seal") ||
-                              contentLower.Contains("testimony whereof");
-
-            if (!hasStateSeal)
-            {
-                missingElements.Add("State seal is missing");
-                suggestedActions.Add("Verify the certificate has the State seal affixed");
-            }
-
-            var hasTreasurerSignature = contentLower.Contains("state treasurer") ||
-                                       contentLower.Contains("acting state treasurer") ||
-                                       contentLower.Contains("treasurer of the state");
-
-            if (!hasTreasurerSignature)
-            {
-                missingElements.Add("State Treasurer signature is missing");
-                suggestedActions.Add("Verify the certificate is signed by the State Treasurer");
-            }
-
-            var hasCertificateNumber = Regex.IsMatch(content, @"certificate\s+number|cert\.\s*no\.", RegexOptions.IgnoreCase);
-
-            if (!hasCertificateNumber)
-            {
-                missingElements.Add("Certificate number is missing");
-                suggestedActions.Add("Verify the certificate has a certificate number");
-            }
-
-            var hasVerificationURL = contentLower.Contains("verify this certificate") ||
-                                    contentLower.Contains("http") ||
-                                    contentLower.Contains("www");
-
-            if (!hasVerificationURL)
-            {
-                missingElements.Add("Certificate verification information is missing");
-                suggestedActions.Add("Verify the certificate includes verification information");
-            }
-
-            return new DocumentValidationResult
-            {
-                MissingElements = missingElements,
-                SuggestedActions = suggestedActions,
-                DetectedOrganizationName = detectedOrganizationName
-            };
-        }
-
-        private DocumentValidationResult ValidateCertificateOfGoodStandingShort(string content, string contentLower, IReadOnlyList<DocumentPage> pages, IReadOnlyList<DocumentKeyValuePair> keyValuePairs, Dictionary<string, string> formFields)
-        {
-            var missingElements = new List<string>();
-            var suggestedActions = new List<string>();
-            string? detectedOrganizationName = null;
-
-            var hasGoodStanding = contentLower.Contains("good standing") &&
-                                  contentLower.Contains("active");
-
-            if (!hasGoodStanding)
-            {
-                missingElements.Add("Active and good standing status is missing");
-                suggestedActions.Add("Verify entity is active and in good standing with the State of NJ");
-            }
-
-            var hasTreasury = contentLower.Contains("department of the treasury");
-
-            if (!hasTreasury)
-            {
-                missingElements.Add("Required keyword: 'Department of the Treasury'");
-                suggestedActions.Add("Verify certificate is issued by NJ Department of Treasury");
-            }
-
-            var hasDivision = contentLower.Contains("division of revenue & enterprise services") ||
-                             contentLower.Contains("division of revenue and enterprise services");
-
-            if (!hasDivision)
-            {
-                missingElements.Add("Required keyword: 'Division of Revenue & Enterprise Services'");
-                suggestedActions.Add("Verify certificate mentions Division of Revenue & Enterprise Services");
-            }
-
-            var hasStateSeal = contentLower.Contains("official seal") ||
-                              contentLower.Contains("seal at trenton") ||
-                              contentLower.Contains("great seal") ||
-                              contentLower.Contains("testimony whereof");
-
-            if (!hasStateSeal)
-            {
-                missingElements.Add("State seal is missing");
-                suggestedActions.Add("Verify the certificate has the State seal affixed");
-            }
-
-            var hasTreasurerSignature = contentLower.Contains("state treasurer") ||
-                                       contentLower.Contains("acting state treasurer") ||
-                                       contentLower.Contains("treasurer of the state");
-
-            if (!hasTreasurerSignature)
-            {
-                missingElements.Add("State Treasurer signature is missing");
-                suggestedActions.Add("Verify the certificate is signed by the State Treasurer");
             }
 
             return new DocumentValidationResult
