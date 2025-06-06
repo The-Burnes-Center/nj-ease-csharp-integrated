@@ -887,6 +887,19 @@ namespace DocumentValidator.Services
                 }
             }
 
+            // Check for FEIN match if provided
+            if (formFields.ContainsKey("fein") && !string.IsNullOrEmpty(formFields["fein"]) && !string.IsNullOrEmpty(detectedOrganizationName))
+            {
+                var feinName = formFields["fein"].Trim();
+                var detectedOrgNameLower = detectedOrganizationName.ToLower().Trim();
+
+                if (!detectedOrgNameLower.Contains(feinName.ToLower()) && !feinName.ToLower().Contains(detectedOrgNameLower))
+                {
+                    missingElements.Add("FEIN (Federal Employer Identification Number) doesn't match the one on the certificate");
+                    suggestedActions.Add("Verify that the correct FEIN was entered");
+                }
+            }
+
             // Check for required elements
             if (!contentLower.Contains("certificate of formation"))
             {
@@ -953,17 +966,6 @@ namespace DocumentValidator.Services
                 suggestedActions.Add("Verify the operating agreement is dated");
             }
 
-            // Check for business purpose section
-            var hasBusinessPurpose = contentLower.Contains("business purpose") &&
-                                    (contentLower.Contains("purpose of the company") ||
-                                     Regex.IsMatch(contentLower, @"purpose.*is", RegexOptions.IgnoreCase));
-
-            if (!hasBusinessPurpose)
-            {
-                missingElements.Add("Business purpose section is missing");
-                suggestedActions.Add("Verify the agreement defines a business purpose");
-            }
-
             // Check for New Jersey reference
             var hasNewJersey = contentLower.Contains("new jersey") ||
                               contentLower.Contains("nj");
@@ -1001,7 +1003,8 @@ namespace DocumentValidator.Services
             var hasDirectors = contentLower.Contains("board of directors") ||
                               contentLower.Contains("directors") ||
                               contentLower.Contains("incorporators") ||
-                              contentLower.Contains("trustees");
+                              contentLower.Contains("trustees") ||
+                              contentLower.Contains("shareholders");
 
             if (!hasDirectors)
             {
@@ -1098,32 +1101,46 @@ namespace DocumentValidator.Services
             }
 
             // Check for Division of Taxation
-            var hasDivision = contentLower.Contains("division of taxation");
+            var hasDivision = contentLower.Contains("division of taxation") || contentLower.Contains("department of the treasury");
 
             if (!hasDivision)
             {
-                missingElements.Add("Required keyword: 'Division of Taxation'");
-                suggestedActions.Add("Verify the certificate is issued by the Division of Taxation");
+                missingElements.Add("Required keyword: 'Division of Taxation' or 'Department of the Treasury'");
+                suggestedActions.Add("Verify the certificate is issued by the Division of Taxation or Department of the Treasury");
             }
 
             // Detect organization name
-            var authorizationLine = "this authorization is good only for the named person at the location specified herein this authorization is null and void if any change of ownership or address is effected.";
-            var authorizationIndex = contentLower.IndexOf(authorizationLine);
-
-            if (authorizationIndex == -1)
+            // Look for organization name after specific phrases
+            var searchPhrases = new[]
             {
-                authorizationLine = "address.";
-                authorizationIndex = contentLower.IndexOf(authorizationLine);
+                "this authorization is good only for the named person at the location specified herein this authorization is null and void if any change of ownership or address is effected",
+                "change in ownership or address.",
+                "certificate of authority"
+            };
+
+            int foundIndex = -1;
+            int foundPhraseLength = 0;
+
+            // Find which phrase exists in the content
+            foreach (var phrase in searchPhrases)
+            {
+                var index = contentLower.IndexOf(phrase);
+                if (index != -1)
+                {
+                    foundIndex = index;
+                    foundPhraseLength = phrase.Length;
+                    break;
+                }
             }
 
-            if (authorizationIndex != -1)
+            if (foundIndex != -1)
             {
-                // Get the text after the authorization line
-                var textAfterAuthorization = content.Substring(authorizationIndex + authorizationLine.Length);
+                // Get the text after the found phrase
+                var textAfterPhrase = content.Substring(foundIndex + foundPhraseLength);
 
                 // Split into lines and find the organization name
-                var lines = textAfterAuthorization.Split('\n');
-                for (int i = 0; i < Math.Min(3, lines.Length); i++)
+                var lines = textAfterPhrase.Split('\n');
+                for (int i = 0; i < Math.Min(5, lines.Length); i++)
                 {
                     var line = lines[i].Trim();
                     // Skip empty lines or lines with less than 3 characters
@@ -1133,10 +1150,18 @@ namespace DocumentValidator.Services
                         if (!line.ToLower().Contains("tax registration") &&
                             !line.ToLower().Contains("tax effective date") &&
                             !line.ToLower().Contains("document locator") &&
-                            !line.ToLower().Contains("date issued"))
+                            !line.ToLower().Contains("date issued") &&
+                            !line.ToLower().Contains("state of") &&
+                            !line.ToLower().Contains("department of") &&
+                            !line.ToLower().Contains("division of"))
                         {
                             detectedOrganizationName = line;
-                            break;
+                            // If it's all caps or has business entity indicators, it's very likely the org name
+                            if ((line == line.ToUpper() && line.Length > 5) ||
+                                Regex.IsMatch(line, @"LLC|INC|CORP|CORPORATION|COMPANY|LP|LLP", RegexOptions.IgnoreCase))
+                            {
+                                break; // We're confident this is the org name
+                            }
                         }
                     }
                 }
