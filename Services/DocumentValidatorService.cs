@@ -16,6 +16,122 @@ namespace DocumentValidator.Services
             _configService = new ConfigurationService();
         }
 
+        // Helper function to normalize organization names for better matching
+        private string NormalizeOrganizationName(string name)
+        {
+            if (string.IsNullOrWhiteSpace(name)) return string.Empty;
+
+            var normalized = name.ToLower().Trim();
+
+            // Remove common punctuation and extra spaces
+            normalized = Regex.Replace(normalized, @"[,\.]", "");
+            normalized = Regex.Replace(normalized, @"\s+", " ").Trim();
+
+            // Define abbreviation mappings (abbreviation -> full form)
+            var abbreviationMap = new Dictionary<string, string>
+            {
+                { "llc", "limited liability company" },
+                { "inc", "incorporated" },
+                { "corp", "corporation" },
+                { "co", "company" },
+                { "ltd", "limited" },
+                { "lp", "limited partnership" },
+                { "llp", "limited liability partnership" },
+                { "pllc", "professional limited liability company" },
+                { "pc", "professional corporation" },
+                { "pa", "professional association" },
+                { "plc", "professional limited company" }
+            };
+
+            // Replace abbreviations with full forms
+            foreach (var kvp in abbreviationMap)
+            {
+                // More robust pattern to ensure we only match actual entity type abbreviations
+                var abbrPattern = new Regex($@"\b{Regex.Escape(kvp.Key)}\.?(?=\s|$|[,;])", RegexOptions.IgnoreCase);
+                normalized = abbrPattern.Replace(normalized, kvp.Value);
+            }
+
+            return normalized;
+        }
+
+        // Helper function to check if two organization names match (accounting for abbreviations)
+        private bool OrganizationNamesMatch(string name1, string name2)
+        {
+            if (string.IsNullOrWhiteSpace(name1) || string.IsNullOrWhiteSpace(name2)) return false;
+
+            var normalized1 = NormalizeOrganizationName(name1);
+            var normalized2 = NormalizeOrganizationName(name2);
+
+            // Direct match after normalization
+            if (normalized1 == normalized2) return true;
+
+            // Check if one contains the other (for partial matches)
+            if (normalized1.Contains(normalized2) || normalized2.Contains(normalized1))
+            {
+                // Extract entity types to ensure we're not matching different entity types
+                var entity1 = GetEntityType(normalized1);
+                var entity2 = GetEntityType(normalized2);
+
+                // Allow match only if:
+                // 1. Both have the same entity type, or
+                // 2. One has no entity type (partial name), or  
+                // 3. One is a more specific version of the other
+                if (entity1 == entity2 || 
+                    entity1 == null || 
+                    entity2 == null ||
+                    (entity1 != null && entity2 != null && (entity1.Contains(entity2) || entity2.Contains(entity1))))
+                {
+                    return true;
+                }
+
+                // Different entity types should not match
+                return false;
+            }
+
+            // More restrictive core business name matching
+            var core1 = RemoveEntitySuffixes(normalized1);
+            var core2 = RemoveEntitySuffixes(normalized2);
+
+            if (!string.IsNullOrWhiteSpace(core1) && !string.IsNullOrWhiteSpace(core2) && 
+                core1.Length > 2 && core2.Length > 2 && core1 == core2)
+            {
+                var entity1 = GetEntityType(normalized1);
+                var entity2 = GetEntityType(normalized2);
+
+                // Only match core names if entity types are the same or compatible
+                if (entity1 == entity2 || 
+                    entity1 == null || 
+                    entity2 == null ||
+                    // Allow some compatible entity types
+                    (entity1 == "corporation" && entity2 == "incorporated") ||
+                    (entity1 == "incorporated" && entity2 == "corporation") ||
+                    (entity1 == "company" && entity2 == "corporation") ||
+                    (entity1 == "corporation" && entity2 == "company"))
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        private string? GetEntityType(string name)
+        {
+            var entityTypes = new[]
+            {
+                "limited liability company", "incorporated", "corporation", "company", "limited",
+                "limited partnership", "limited liability partnership", "professional limited liability company",
+                "professional corporation", "professional association", "professional limited company"
+            };
+
+            return entityTypes.FirstOrDefault(entityType => name.Contains(entityType));
+        }
+
+        private string RemoveEntitySuffixes(string name)
+        {
+            return Regex.Replace(name, @"\b(limited liability company|incorporated|corporation|company|limited|limited partnership|limited liability partnership|professional limited liability company|professional corporation|professional association|professional limited company)\b", "", RegexOptions.IgnoreCase).Trim();
+        }
+
         public async Task<DocumentValidation> ValidateDocumentAsync(byte[] buffer, string documentType, Dictionary<string, string> formFields)
         {
             try
@@ -193,10 +309,7 @@ namespace DocumentValidator.Services
             // Check for organization name match if provided
             if (formFields.ContainsKey("organizationName") && !string.IsNullOrEmpty(detectedOrganizationName))
             {
-                var orgNameLower = formFields["organizationName"].ToLower().Trim();
-                var detectedOrgNameLower = detectedOrganizationName.ToLower().Trim();
-
-                if (!detectedOrgNameLower.Contains(orgNameLower) && !orgNameLower.Contains(detectedOrgNameLower))
+                if (!OrganizationNamesMatch(formFields["organizationName"], detectedOrganizationName))
                 {
                     missingElements.Add("Organization name doesn't match the one on the certificate");
                     suggestedActions.Add("Verify that the correct organization name was entered");
@@ -388,10 +501,7 @@ namespace DocumentValidator.Services
             // Check for organization name match if provided
             if (formFields.ContainsKey("organizationName") && !string.IsNullOrEmpty(detectedOrganizationName))
             {
-                var orgNameLower = formFields["organizationName"].ToLower().Trim();
-                var detectedOrgNameLower = detectedOrganizationName.ToLower().Trim();
-
-                if (!detectedOrgNameLower.Contains(orgNameLower) && !orgNameLower.Contains(detectedOrgNameLower))
+                if (!OrganizationNamesMatch(formFields["organizationName"], detectedOrganizationName))
                 {
                     missingElements.Add("Organization name doesn't match the one on the certificate");
                     suggestedActions.Add("Verify that the correct organization name was entered");
@@ -594,18 +704,7 @@ namespace DocumentValidator.Services
             // Check for organization name match if provided
             if (formFields != null && formFields.ContainsKey("organizationName") && !string.IsNullOrEmpty(detectedOrganizationName))
             {
-                var orgNameLower = formFields["organizationName"].ToLower().Trim();
-                var detectedOrgNameLower = detectedOrganizationName.ToLower().Trim();
-
-                // More flexible matching that accounts for common variations
-                var isMatch =
-                    detectedOrgNameLower.Contains(orgNameLower) ||
-                    orgNameLower.Contains(detectedOrgNameLower) ||
-                    // Remove common suffixes for matching
-                    Regex.Replace(detectedOrgNameLower, @",?\s*(llc|inc|corp|corporation|company|lp|llp)\.?$", "", RegexOptions.IgnoreCase).Trim() ==
-                        Regex.Replace(orgNameLower, @",?\s*(llc|inc|corp|corporation|company|lp|llp)\.?$", "", RegexOptions.IgnoreCase).Trim();
-
-                if (!isMatch)
+                if (!OrganizationNamesMatch(formFields["organizationName"], detectedOrganizationName))
                 {
                     missingElements.Add("Organization name doesn't match the one on the certificate");
                     suggestedActions.Add($"Verify that the correct organization name was entered. Certificate shows: \"{detectedOrganizationName}\"");
@@ -644,23 +743,11 @@ namespace DocumentValidator.Services
             var missingElements = new List<string>();
             var suggestedActions = new List<string>();
 
-            // Check required elements
-            if (!contentLower.Contains("trade name"))
+            // Check for required elements
+            if (!contentLower.Contains("certificate of trade name"))
             {
-                missingElements.Add("Document does not appear to be a Trade Name Certificate");
-                suggestedActions.Add("Verify that this is the correct document type");
-            }
-
-            if (!contentLower.Contains("certificate"))
-            {
-                missingElements.Add("Missing certificate reference");
-                suggestedActions.Add("Document should be a certificate");
-            }
-
-            if (!CheckForDatePresence(content))
-            {
-                missingElements.Add("No date found on the certificate");
-                suggestedActions.Add("Verify that the certificate contains a valid date");
+                missingElements.Add("Required keyword: 'Certificate of Trade Name'");
+                suggestedActions.Add("Verify that the document is a Certificate of Trade Name");
             }
 
             return new DocumentValidationResult
@@ -1104,10 +1191,7 @@ namespace DocumentValidator.Services
             // Check for organization name match if provided
             if (formFields.ContainsKey("organizationName") && !string.IsNullOrEmpty(detectedOrganizationName))
             {
-                var orgNameLower = formFields["organizationName"].ToLower().Trim();
-                var detectedOrgNameLower = detectedOrganizationName.ToLower().Trim();
-
-                if (!detectedOrgNameLower.Contains(orgNameLower) && !orgNameLower.Contains(detectedOrgNameLower))
+                if (!OrganizationNamesMatch(formFields["organizationName"], detectedOrganizationName))
                 {
                     missingElements.Add("Organization name doesn't match the one on the certificate");
                     suggestedActions.Add("Verify that the correct organization name was entered");
@@ -1137,6 +1221,14 @@ namespace DocumentValidator.Services
             {
                 missingElements.Add("Signature of authorized state official is missing");
                 suggestedActions.Add("Verify document has been signed by an authorized state official");
+            }
+
+            // Check for presence of any date
+            var hasDate = CheckForDatePresence(content);
+            if (!hasDate)
+            {
+                missingElements.Add("Document must contain a date");
+                suggestedActions.Add("Verify that the document includes a stamped date");
             }
 
             // Check for verification info
@@ -1199,10 +1291,7 @@ namespace DocumentValidator.Services
             // Check for organization name match if provided
             if (formFields.ContainsKey("organizationName") && !string.IsNullOrEmpty(detectedOrganizationName))
             {
-                var orgNameLower = formFields["organizationName"].ToLower().Trim();
-                var detectedOrgNameLower = detectedOrganizationName.ToLower().Trim();
-
-                if (!detectedOrgNameLower.Contains(orgNameLower) && !orgNameLower.Contains(detectedOrgNameLower))
+                if (!OrganizationNamesMatch(formFields["organizationName"], detectedOrganizationName))
                 {
                     missingElements.Add("Organization name doesn't match the one on the certificate");
                     suggestedActions.Add("Verify that the correct organization name was entered");
@@ -1270,10 +1359,7 @@ namespace DocumentValidator.Services
             // Check for organization name match if provided
             if (formFields.ContainsKey("organizationName") && !string.IsNullOrEmpty(detectedOrganizationName))
             {
-                var orgNameLower = formFields["organizationName"].ToLower().Trim();
-                var detectedOrgNameLower = detectedOrganizationName.ToLower().Trim();
-
-                if (!detectedOrgNameLower.Contains(orgNameLower) && !orgNameLower.Contains(detectedOrgNameLower))
+                if (!OrganizationNamesMatch(formFields["organizationName"], detectedOrganizationName))
                 {
                     missingElements.Add("Organization name doesn't match the one on the certificate");
                     suggestedActions.Add("Verify that the correct organization name was entered");
@@ -1556,6 +1642,16 @@ namespace DocumentValidator.Services
                 suggestedActions.Add("Verify the letter is on IRS letterhead showing 'Internal Revenue Service'");
             }
 
+            // Check for signature
+            var hasSignature = content.Contains("Sincerely,") ||
+                               content.Contains("Director");
+
+            if (!hasSignature)
+            {
+                missingElements.Add("Signature is missing");
+                suggestedActions.Add("Verify the certificate has been signed by an authorized official");
+            }
+
             return new DocumentValidationResult
             {
                 MissingElements = missingElements,
@@ -1659,18 +1755,7 @@ namespace DocumentValidator.Services
             // Check for organization name match if provided
             if (formFields != null && formFields.ContainsKey("organizationName") && !string.IsNullOrEmpty(detectedOrganizationName))
             {
-                var orgNameLower = formFields["organizationName"].ToLower().Trim();
-                var detectedOrgNameLower = detectedOrganizationName.ToLower().Trim();
-
-                // More flexible matching that accounts for common variations
-                var isMatch =
-                    detectedOrgNameLower.Contains(orgNameLower) ||
-                    orgNameLower.Contains(detectedOrgNameLower) ||
-                    // Remove common suffixes for matching
-                    Regex.Replace(detectedOrgNameLower, @",?\s*(llc|inc|corp|corporation|company|lp|llp)\.?$", "", RegexOptions.IgnoreCase).Trim() ==
-                        Regex.Replace(orgNameLower, @",?\s*(llc|inc|corp|corporation|company|lp|llp)\.?$", "", RegexOptions.IgnoreCase).Trim();
-
-                if (!isMatch)
+                if (!OrganizationNamesMatch(formFields["organizationName"], detectedOrganizationName))
                 {
                     missingElements.Add("Organization name doesn't match the one on the certificate");
                     suggestedActions.Add($"Verify that the correct organization name was entered. Certificate shows: \"{detectedOrganizationName}\"");
@@ -1750,18 +1835,7 @@ namespace DocumentValidator.Services
                 // Check for organization name match if provided
                 if (formFields != null && formFields.ContainsKey("organizationName") && !string.IsNullOrEmpty(detectedOrganizationName))
                 {
-                    var orgNameLower = formFields["organizationName"].ToLower().Trim();
-                    var detectedOrgNameLower = detectedOrganizationName.ToLower().Trim();
-
-                    // More flexible matching that accounts for common variations
-                    var isMatch =
-                        detectedOrgNameLower.Contains(orgNameLower) ||
-                        orgNameLower.Contains(detectedOrgNameLower) ||
-                        // Remove common suffixes for matching
-                        Regex.Replace(detectedOrgNameLower, @",?\s*(llc|inc|corp|corporation|company|lp|llp)\.?$", "", RegexOptions.IgnoreCase).Trim() ==
-                            Regex.Replace(orgNameLower, @",?\s*(llc|inc|corp|corporation|company|lp|llp)\.?$", "", RegexOptions.IgnoreCase).Trim();
-
-                    if (!isMatch)
+                    if (!OrganizationNamesMatch(formFields["organizationName"], detectedOrganizationName))
                     {
                         missingElements.Add("Organization name doesn't match the one on the certificate");
                         suggestedActions.Add($"Verify that the correct organization name was entered. Certificate shows: \"{detectedOrganizationName}\"");

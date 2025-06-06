@@ -2,6 +2,7 @@ using PdfSharpCore.Drawing;
 using PdfSharpCore.Pdf;
 using DocumentValidator.Models;
 using System.Text;
+using System.Linq;
 
 namespace DocumentValidator.Services
 {
@@ -33,11 +34,11 @@ namespace DocumentValidator.Services
                 var yPosition = 50;
 
                 // Add report header
-                gfx.DrawString("Document Validation Report", fontLarge, XBrushes.Black,
+                gfx.DrawString("NJ EASE Document Validation Report", fontLarge, XBrushes.Black,
                     new XRect(0, yPosition, page.Width, 30), XStringFormats.TopCenter);
                 yPosition += 40;
 
-                gfx.DrawString($"Organization: {organizationName}", font, XBrushes.Black,
+                gfx.DrawString($"Organization Name: {organizationName}", font, XBrushes.Black,
                     new XRect(0, yPosition, page.Width, 20), XStringFormats.TopCenter);
                 yPosition += 20;
 
@@ -57,9 +58,9 @@ namespace DocumentValidator.Services
                 var columnWidths = new double[]
                 {
                     0.35 * pageWidth, // Document Name
-                    0.20 * pageWidth, // Document Type
+                    0.35 * pageWidth, // Document Type
                     0.15 * pageWidth, // Status
-                    0.30 * pageWidth  // Issues
+                    0.15 * pageWidth  // Issues
                 };
 
                 var headers = new[] { "Document Name", "Document Type", "Status", "Issues" };
@@ -81,7 +82,10 @@ namespace DocumentValidator.Services
                 for (int index = 0; index < validResults.Count; index++)
                 {
                     var result = validResults[index];
-                    var rowHeight = 35;
+                    var documentTypeName = FormatDocumentType(result.DocumentType);
+                    
+                    // Calculate dynamic row height based on text wrapping needs
+                    var rowHeight = CalculateRequiredRowHeight(result.FileName, documentTypeName, 30, 20, font.Height);
 
                     // Draw alternating row colors
                     var rowColor = index % 2 == 0 ? XColor.FromArgb(249, 249, 249) : XColors.White;
@@ -90,17 +94,14 @@ namespace DocumentValidator.Services
 
                     x = startX;
 
-                    // Document Name column
-                    var truncatedFileName = TruncateText(result.FileName, 30);
-                    gfx.DrawString(truncatedFileName, font, XBrushes.Black,
-                        new XRect(x + 5, yPosition + 5, columnWidths[0] - 10, rowHeight - 10), XStringFormats.TopLeft);
+                    // Document Name column - use word wrapping instead of truncation
+                    DrawWrappedText(gfx, result.FileName, font, XBrushes.Black,
+                        new XRect(x + 5, yPosition + 5, columnWidths[0] - 10, rowHeight - 10), 30);
                     x += (int)columnWidths[0];
 
-                    // Document Type column
-                    var documentTypeName = FormatDocumentType(result.DocumentType);
-                    var truncatedDocType = TruncateText(documentTypeName, 20);
-                    gfx.DrawString(truncatedDocType, font, XBrushes.Black,
-                        new XRect(x + 5, yPosition + 5, columnWidths[1] - 10, rowHeight - 10), XStringFormats.TopLeft);
+                    // Document Type column - use word wrapping instead of truncation
+                    DrawWrappedText(gfx, documentTypeName, font, XBrushes.Black,
+                        new XRect(x + 5, yPosition + 5, columnWidths[1] - 10, rowHeight - 10), 20);
                     x += (int)columnWidths[1];
 
                     // Status column
@@ -342,7 +343,9 @@ namespace DocumentValidator.Services
             for (int index = 0; index < skippedDocuments.Count; index++)
             {
                 var document = skippedDocuments[index];
-                var rowHeight = 30;
+                
+                // Calculate dynamic row height based on text wrapping needs
+                var rowHeight = CalculateRequiredRowHeight(document.FileName, document.Reason, 40, 30, font.Height);
 
                 // Draw alternating row colors
                 var rowColor = index % 2 == 0 ? XColor.FromArgb(249, 249, 249) : XColors.White;
@@ -351,16 +354,14 @@ namespace DocumentValidator.Services
 
                 x = startX;
 
-                // Document Name column
-                var truncatedFileName = TruncateText(document.FileName, 40);
-                gfx.DrawString(truncatedFileName, font, XBrushes.Black,
-                    new XRect(x + 5, yPosition + 5, columnWidths[0] - 10, rowHeight - 10), XStringFormats.TopLeft);
+                // Document Name column - use word wrapping instead of truncation
+                DrawWrappedText(gfx, document.FileName, font, XBrushes.Black,
+                    new XRect(x + 5, yPosition + 5, columnWidths[0] - 10, rowHeight - 10), 40);
                 x += (int)columnWidths[0];
 
-                // Reason column
-                var truncatedReason = TruncateText(document.Reason, 30);
-                gfx.DrawString(truncatedReason, font, XBrushes.Black,
-                    new XRect(x + 5, yPosition + 5, columnWidths[1] - 10, rowHeight - 10), XStringFormats.TopLeft);
+                // Reason column - use word wrapping instead of truncation
+                DrawWrappedText(gfx, document.Reason, font, XBrushes.Black,
+                    new XRect(x + 5, yPosition + 5, columnWidths[1] - 10, rowHeight - 10), 30);
 
                 yPosition += rowHeight;
 
@@ -385,7 +386,7 @@ namespace DocumentValidator.Services
             {
                 { "tax-clearance-online", "Tax Clearance Certificate (Online)" },
                 { "tax-clearance-manual", "Tax Clearance Certificate (Manual)" },
-                { "cert-alternative-name", "Certificate of Alternative Name" },
+                { "cert-alternative-name", "Certificate of Alternate Name" },
                 { "cert-trade-name", "Certificate of Trade Name" },
                 { "cert-formation", "Certificate of Formation" },
                 { "cert-formation-independent", "Certificate of Formation (Independent)" },
@@ -403,12 +404,59 @@ namespace DocumentValidator.Services
             return documentTypeMap.TryGetValue(documentType, out var formatted) ? formatted : documentType;
         }
 
-        private string TruncateText(string text, int maxLength)
+        private List<string> WrapText(string text, int maxCharsPerLine)
         {
-            if (string.IsNullOrEmpty(text) || text.Length <= maxLength)
-                return text;
+            if (string.IsNullOrEmpty(text))
+                return new List<string> { "" };
 
-            return text.Substring(0, maxLength - 3) + "...";
+            var words = text.Split(' ');
+            var lines = new List<string>();
+            var currentLine = "";
+
+            foreach (var word in words)
+            {
+                if (string.IsNullOrEmpty(currentLine))
+                {
+                    currentLine = word;
+                }
+                else if ((currentLine + " " + word).Length <= maxCharsPerLine)
+                {
+                    currentLine += " " + word;
+                }
+                else
+                {
+                    lines.Add(currentLine);
+                    currentLine = word;
+                }
+            }
+
+            if (!string.IsNullOrEmpty(currentLine))
+            {
+                lines.Add(currentLine);
+            }
+
+            return lines.Any() ? lines : new List<string> { "" };
+        }
+
+        private void DrawWrappedText(XGraphics gfx, string text, XFont font, XBrush brush, XRect rect, int maxCharsPerLine)
+        {
+            var lines = WrapText(text, maxCharsPerLine);
+            var lineHeight = font.Height;
+            var currentY = rect.Y;
+
+            for (int i = 0; i < lines.Count && currentY + lineHeight <= rect.Y + rect.Height; i++)
+            {
+                gfx.DrawString(lines[i], font, brush, new XRect(rect.X, currentY, rect.Width, lineHeight), XStringFormats.TopLeft);
+                currentY += lineHeight;
+            }
+        }
+
+        private int CalculateRequiredRowHeight(string text1, string text2, int maxChars1, int maxChars2, double lineHeight)
+        {
+            var lines1 = WrapText(text1, maxChars1).Count;
+            var lines2 = WrapText(text2, maxChars2).Count;
+            var maxLines = Math.Max(lines1, lines2);
+            return Math.Max((int)(maxLines * lineHeight + 10), 35); // Minimum height of 35
         }
     }
 } 
