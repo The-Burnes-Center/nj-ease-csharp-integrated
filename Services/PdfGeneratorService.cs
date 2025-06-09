@@ -6,30 +6,66 @@ using System.Linq;
 
 namespace DocumentValidator.Services
 {
+    /// <summary>
+    /// Service for generating professional PDF reports from document validation results.
+    /// Creates two types of reports: consolidated reports for multiple documents and 
+    /// individual document validation summaries.
+    /// 
+    /// Features:
+    /// - Modern flat design with semantic color coding
+    /// - Responsive text wrapping and dynamic row sizing
+    /// - Professional table layouts with status indicators
+    /// - Detailed validation breakdowns with corrective actions
+    /// - Support for uncategorized documents requiring manual review
+    /// </summary>
     public class PdfGeneratorService
     {
-        // Modern color palette inspired by contemporary design systems
-        private readonly XColor PrimaryBlue = XColor.FromArgb(37, 99, 235); // Modern blue (blue-600)
-        private readonly XColor PrimaryDark = XColor.FromArgb(30, 64, 175); // Darker blue (blue-700)
-        private readonly XColor SecondaryBlue = XColor.FromArgb(59, 130, 246); // Lighter blue (blue-500)
-        private readonly XColor AccentGray = XColor.FromArgb(249, 250, 251); // Very light gray (gray-50)
-        private readonly XColor BackgroundGray = XColor.FromArgb(243, 244, 246); // Light gray (gray-100)
-        private readonly XColor BorderGray = XColor.FromArgb(229, 231, 235); // Border gray (gray-200)
-        private readonly XColor SuccessGreen = XColor.FromArgb(16, 185, 129); // Modern green (emerald-500)
-        private readonly XColor SuccessLight = XColor.FromArgb(209, 250, 229); // Light green background
-        private readonly XColor ErrorRed = XColor.FromArgb(239, 68, 68); // Modern red (red-500)
-        private readonly XColor ErrorLight = XColor.FromArgb(254, 226, 226); // Light red background
-        private readonly XColor WarningOrange = XColor.FromArgb(245, 158, 11); // Modern orange (amber-500)
-        private readonly XColor WarningLight = XColor.FromArgb(254, 243, 199); // Light orange background
-        private readonly XColor TextPrimary = XColor.FromArgb(17, 24, 39); // Dark text (gray-900)
-        private readonly XColor TextSecondary = XColor.FromArgb(75, 85, 99); // Medium text (gray-600)
-        private readonly XColor TextMuted = XColor.FromArgb(156, 163, 175); // Light text (gray-400)
+        // Color palette for professional document presentation
+        // Primary colors for headers and branding
+        private readonly XColor PrimaryBlue = XColor.FromArgb(37, 99, 235);
+        private readonly XColor PrimaryDark = XColor.FromArgb(30, 64, 175);
+        private readonly XColor SecondaryBlue = XColor.FromArgb(59, 130, 246);
 
+        // Background and layout colors
+        private readonly XColor AccentGray = XColor.FromArgb(249, 250, 251);
+        private readonly XColor BackgroundGray = XColor.FromArgb(243, 244, 246);
+        private readonly XColor BorderGray = XColor.FromArgb(229, 231, 235);
+
+        // Status colors for validation results
+        private readonly XColor SuccessGreen = XColor.FromArgb(16, 185, 129);
+        private readonly XColor SuccessLight = XColor.FromArgb(209, 250, 229);
+        private readonly XColor ErrorRed = XColor.FromArgb(239, 68, 68);
+        private readonly XColor ErrorLight = XColor.FromArgb(254, 226, 226);
+        private readonly XColor WarningOrange = XColor.FromArgb(245, 158, 11);
+        private readonly XColor WarningLight = XColor.FromArgb(254, 243, 199);
+
+        // Text colors for content hierarchy
+        private readonly XColor TextPrimary = XColor.FromArgb(17, 24, 39);
+        private readonly XColor TextSecondary = XColor.FromArgb(75, 85, 99);
+        private readonly XColor TextMuted = XColor.FromArgb(156, 163, 175);
+
+        /// <summary>
+        /// Generates a consolidated PDF report containing validation results for multiple documents.
+        /// Includes an executive summary table and detailed pages for each document.
+        /// 
+        /// Report structure:
+        /// 1. Summary page with organization header and validation table
+        /// 2. Individual detail pages for each validated document
+        /// 3. Uncategorized documents page (if any exist)
+        /// 
+        /// The table uses dynamic row sizing to accommodate varying document name lengths
+        /// and includes color-coded status badges for immediate result recognition.
+        /// </summary>
+        /// <param name="validationResults">List of validation results from processed documents</param>
+        /// <param name="organizationName">Organization name for report header</param>
+        /// <param name="skippedDocuments">Documents that couldn't be automatically processed</param>
+        /// <returns>PDF report as byte array</returns>
+        /// <exception cref="InvalidOperationException">Thrown when no valid results provided</exception>
         public async Task<byte[]> GenerateConsolidatedReportAsync(List<ValidationResult> validationResults, string organizationName, List<SkippedDocument> skippedDocuments)
         {
             return await Task.Run(() =>
             {
-                // Only process valid results that are not unknown document types
+                // Filter to only include valid results with known document types
                 var validResults = validationResults.Where(result =>
                     result != null && !string.IsNullOrEmpty(result.FileName) &&
                     !string.IsNullOrEmpty(result.DocumentType) && result.DocumentInfo != null &&
@@ -40,30 +76,30 @@ namespace DocumentValidator.Services
                     throw new InvalidOperationException("No valid document validation results to generate report");
                 }
 
-                // Create a PDF document
+                // Initialize PDF document and graphics
                 var document = new PdfDocument();
                 var page = document.AddPage();
                 var gfx = XGraphics.FromPdfPage(page);
                 
-                // Modern font collection with better hierarchy
+                // Define font hierarchy
                 var font = new XFont("Segoe UI", 11);
                 var fontBold = new XFont("Segoe UI", 11, XFontStyle.Bold);
-                var fontLarge = new XFont("Segoe UI", 24, XFontStyle.Bold); // Increased from 20
-                var fontMedium = new XFont("Segoe UI", 16, XFontStyle.Bold); // Increased from 14
+                var fontLarge = new XFont("Segoe UI", 24, XFontStyle.Bold);
+                var fontMedium = new XFont("Segoe UI", 16, XFontStyle.Bold);
                 var fontSmall = new XFont("Segoe UI", 9);
                 var fontTiny = new XFont("Segoe UI", 8);
 
-                var yPosition = 50; // Increased top margin
+                var yPosition = 50;
 
-                // Modern flat header with clean design
+                // Create header section with blue background
                 var headerRect = new XRect(0, 0, page.Width, 160);
                 gfx.DrawRectangle(new XSolidBrush(PrimaryBlue), headerRect);
 
-                // Add subtle drop shadow instead of gradient
+                // Add drop shadow
                 var shadowRect = new XRect(0, 160, page.Width, 4);
                 gfx.DrawRectangle(new XSolidBrush(XColor.FromArgb(40, 0, 0, 0)), shadowRect);
 
-                // Modern title with clean typography
+                // Draw header text
                 gfx.DrawString("NJ EASE Document Validation Report", fontLarge, XBrushes.White,
                     new XRect(0, yPosition, page.Width, 40), XStringFormats.TopCenter);
                 yPosition += 50;
@@ -78,13 +114,10 @@ namespace DocumentValidator.Services
                     new XRect(0, yPosition, page.Width, 15), XStringFormats.TopCenter);
                 yPosition += 50;
 
-                // Modern card design with matching background
+                // Create summary card
                 var summaryCardRect = new XRect(50, yPosition, page.Width - 100, 45);
-                
-                // Create rounded corner effect with AccentGray background to match detail pages
                 DrawRoundedRectangle(gfx, summaryCardRect, 8, new XSolidBrush(AccentGray), new XPen(BorderGray, 1));
                 
-                // Add subtle drop shadow for depth
                 var cardShadow = new XRect(52, yPosition + 2, page.Width - 100, 45);
                 DrawRoundedRectangle(gfx, cardShadow, 8, new XSolidBrush(XColor.FromArgb(20, 0, 0, 0)), null);
 
@@ -93,7 +126,7 @@ namespace DocumentValidator.Services
                     new XRect(65, yPosition + 12, page.Width - 130, 25), XStringFormats.TopLeft);
                 yPosition += 65;
 
-                // Enhanced table layout with better proportions
+                // Set up table layout with responsive column widths
                 var pageWidth = page.Width - 100;
                 var startX = 50;
 
@@ -107,14 +140,14 @@ namespace DocumentValidator.Services
 
                 var headers = new[] { "Document Name", "Document Type", "Status", "Issues" };
 
-                // Modern flat table header
+                // Draw table header
                 var headerTableRect = new XRect(startX, yPosition, pageWidth, 35);
                 DrawRoundedRectangle(gfx, headerTableRect, 6, new XSolidBrush(PrimaryBlue), null);
 
                 var x = startX;
                 for (int i = 0; i < headers.Length; i++)
                 {
-                    // Modern vertical separators
+                    // Add column separators
                     if (i > 0)
                     {
                         gfx.DrawLine(new XPen(XColor.FromArgb(80, 255, 255, 255), 1), 
@@ -127,21 +160,20 @@ namespace DocumentValidator.Services
                 }
                 yPosition += 35;
 
-                // Draw enhanced table rows with modern flat styling
+                // Draw table rows with dynamic height based on content
                 for (int index = 0; index < validResults.Count; index++)
                 {
                     var result = validResults[index];
                     var documentTypeName = FormatDocumentType(result.DocumentType);
                     
-                    // Calculate row height to accommodate full text without truncation
+                    // Calculate row height based on text wrapping requirements
                     var nameLines = WrapTextToWidth(gfx, result.FileName, font, columnWidths[0] - 24);
                     var typeLines = WrapTextToWidth(gfx, documentTypeName, font, columnWidths[1] - 24);
                     var maxLines = Math.Max(nameLines.Count, typeLines.Count);
                     
-                    // Calculate row height based on actual line count with proper padding
-                    var rowHeight = Math.Max(50, (int)(maxLines * font.Height + 20)); // Minimum 50px height, 20px padding
+                    var rowHeight = Math.Max(50, (int)(maxLines * font.Height + 20));
 
-                    // Modern flat alternating row colors
+                    // Alternate row colors
                     var rowColor = index % 2 == 0 ? XColor.FromArgb(252, 253, 254) : XColors.White;
                     
                     var rowRect = new XRect(startX, yPosition, pageWidth, rowHeight);
@@ -149,16 +181,15 @@ namespace DocumentValidator.Services
 
                     x = startX;
 
-                    // Document Name column - display full text with proper wrapping
+                    // Document Name column
                     DrawWrappedTextToFit(gfx, result.FileName, font, new XSolidBrush(TextPrimary),
                         new XRect(x + 12, yPosition + 10, columnWidths[0] - 24, rowHeight - 20));
                     
-                    // Modern vertical separator
                     gfx.DrawLine(new XPen(BorderGray, 0.5), 
                         x + (int)columnWidths[0], yPosition + 5, x + (int)columnWidths[0], yPosition + rowHeight - 5);
                     x += (int)columnWidths[0];
 
-                    // Document Type column - display full text with proper wrapping
+                    // Document Type column
                     DrawWrappedTextToFit(gfx, documentTypeName, font, new XSolidBrush(TextPrimary),
                         new XRect(x + 12, yPosition + 10, columnWidths[1] - 24, rowHeight - 20));
                     
@@ -166,16 +197,14 @@ namespace DocumentValidator.Services
                         x + (int)columnWidths[1], yPosition + 5, x + (int)columnWidths[1], yPosition + rowHeight - 5);
                     x += (int)columnWidths[1];
 
-                    // Modern Status column with flat rounded badges
+                    // Status column with colored badge
                     var statusColor = result.Success ? SuccessGreen : ErrorRed;
                     var statusBgColor = result.Success ? SuccessLight : ErrorLight;
                     var statusText = result.Success ? "PASSED" : "FAILED";
                     
-                    // Draw modern flat status badge with rounded corners
                     var statusBadgeRect = new XRect(x + 8, yPosition + 10, columnWidths[2] - 16, 22);
                     DrawRoundedRectangle(gfx, statusBadgeRect, 4, new XSolidBrush(statusBgColor), new XPen(statusColor, 1));
                     
-                    // Center align text both horizontally and vertically within the badge
                     gfx.DrawString(statusText, new XFont("Segoe UI", 9, XFontStyle.Bold), new XSolidBrush(statusColor),
                         statusBadgeRect, XStringFormats.Center);
                     
@@ -183,7 +212,7 @@ namespace DocumentValidator.Services
                         x + (int)columnWidths[2], yPosition + 5, x + (int)columnWidths[2], yPosition + rowHeight - 5);
                     x += (int)columnWidths[2];
 
-                    // Modern Issues column
+                    // Issues column
                     var issuesText = result.MissingElements.Count > 0
                         ? $"{result.MissingElements.Count}"
                         : "None";
@@ -194,7 +223,7 @@ namespace DocumentValidator.Services
 
                     yPosition += rowHeight;
 
-                    // Check if we need a new page
+                    // Check for page break
                     if (yPosition > page.Height - 120)
                     {
                         page = document.AddPage();
@@ -203,7 +232,7 @@ namespace DocumentValidator.Services
                     }
                 }
 
-                // Modern information section with flat design
+                // Add information section
                 yPosition += 30;
                 var infoRect = new XRect(50, yPosition, page.Width - 100, 45);
                 DrawRoundedRectangle(gfx, infoRect, 8, new XSolidBrush(WarningLight), new XPen(WarningOrange, 1));
@@ -213,7 +242,7 @@ namespace DocumentValidator.Services
                     new XSolidBrush(XColor.FromArgb(146, 64, 14)),
                     new XRect(65, yPosition + 14, page.Width - 130, 25), XStringFormats.TopLeft);
 
-                // Add detailed validation results for each document on separate pages
+                // Add detailed pages for each document
                 foreach (var result in validResults)
                 {
                     page = document.AddPage();
@@ -221,7 +250,7 @@ namespace DocumentValidator.Services
                     AddDetailedValidationPage(gfx, page, result, organizationName);
                 }
 
-                // Add skipped documents page if any documents were skipped
+                // Add skipped documents page if needed
                 if (skippedDocuments.Count > 0)
                 {
                     page = document.AddPage();
@@ -229,13 +258,21 @@ namespace DocumentValidator.Services
                     AddSkippedDocumentsPage(gfx, page, skippedDocuments, organizationName);
                 }
 
-                // Save to memory stream
+                // Convert to byte array
                 using var stream = new MemoryStream();
                 document.Save(stream);
                 return stream.ToArray();
             });
         }
 
+        /// <summary>
+        /// Generates a single-page PDF report for an individual document validation result.
+        /// Contains document details, validation status, statistics, and any issues found.
+        /// </summary>
+        /// <param name="validationResult">Validation result data for the document</param>
+        /// <param name="documentName">Name of the document being validated</param>
+        /// <param name="organizationName">Organization name for report context</param>
+        /// <returns>PDF report as byte array</returns>
         public async Task<byte[]> GenerateValidationSummaryAsync(ValidationResult validationResult, string documentName, string organizationName)
         {
             return await Task.Run(() =>
@@ -252,36 +289,42 @@ namespace DocumentValidator.Services
             });
         }
 
+        /// <summary>
+        /// Creates a detailed validation page for a single document.
+        /// Includes document header, details section, validation results, statistics,
+        /// and issues/actions sections as appropriate.
+        /// </summary>
+        /// <param name="gfx">Graphics context for drawing</param>
+        /// <param name="page">PDF page to draw on</param>
+        /// <param name="result">Validation result containing document data</param>
+        /// <param name="organizationName">Organization name for context</param>
         private void AddDetailedValidationPage(XGraphics gfx, PdfPage page, ValidationResult result, string organizationName)
         {
             if (result?.DocumentInfo == null) return;
 
             var font = new XFont("Segoe UI", 11);
             var fontBold = new XFont("Segoe UI", 12, XFontStyle.Bold);
-            var fontLarge = new XFont("Segoe UI", 20, XFontStyle.Bold); // Increased from 18
-            var fontMedium = new XFont("Segoe UI", 15, XFontStyle.Bold); // Increased from 14
+            var fontLarge = new XFont("Segoe UI", 20, XFontStyle.Bold);
+            var fontMedium = new XFont("Segoe UI", 15, XFontStyle.Bold);
 
-            var yPosition = 40; // Increased from 30
+            var yPosition = 40;
 
-            // Modern header with reduced height
-            var headerRect = new XRect(0, 0, page.Width, 80); // Reduced from 110 to 80
+            // Create header with document type as title
+            var headerRect = new XRect(0, 0, page.Width, 80);
             gfx.DrawRectangle(new XSolidBrush(PrimaryBlue), headerRect);
 
-            // Add subtle drop shadow
-            var shadowRect = new XRect(0, 80, page.Width, 6); // Updated Y position
+            var shadowRect = new XRect(0, 80, page.Width, 6);
             gfx.DrawRectangle(new XSolidBrush(XColor.FromArgb(40, 0, 0, 0)), shadowRect);
 
-            // Display document type as the header instead of generic title
             var documentTypeTitle = FormatDocumentType(result.DocumentType);
             gfx.DrawString(documentTypeTitle, fontLarge, XBrushes.White,
                 new XRect(0, yPosition, page.Width, 35), XStringFormats.TopCenter);
-            yPosition += 60; // Reduced spacing to account for shorter header
+            yPosition += 60;
 
-            // Modern section styling with flat design
             var sectionHeaderStyle = new XFont("Segoe UI", 14, XFontStyle.Bold);
             var sectionBorderColor = new XPen(BorderGray, 1);
 
-            // Document Details section with modern flat card design
+            // Document Details section
             var detailsRect = new XRect(50, yPosition, page.Width - 100, 30);
             DrawRoundedRectangle(gfx, detailsRect, 6, new XSolidBrush(AccentGray), sectionBorderColor);
             
@@ -289,7 +332,7 @@ namespace DocumentValidator.Services
                 new XRect(65, yPosition + 6, page.Width - 130, 25), XStringFormats.TopLeft);
             yPosition += 40;
 
-            // Document info with modern styling and better spacing
+            // Document information
             var infoItems = new[]
             {
                 $"Document Name: {result.FileName}",
@@ -308,7 +351,7 @@ namespace DocumentValidator.Services
             }
             yPosition += 20;
 
-            // Modern Validation Summary section with flat design
+            // Validation Result section
             var summaryRect = new XRect(50, yPosition, page.Width - 100, 30);
             DrawRoundedRectangle(gfx, summaryRect, 6, new XSolidBrush(AccentGray), sectionBorderColor);
             
@@ -316,21 +359,19 @@ namespace DocumentValidator.Services
                 new XRect(65, yPosition + 6, page.Width - 130, 25), XStringFormats.TopLeft);
             yPosition += 40;
 
-            // Modern overall result with flat background box
+            // Display result with colored badge
             var resultColor = result.Success ? SuccessGreen : ErrorRed;
             var resultBgColor = result.Success ? SuccessLight : ErrorLight;
             var resultText = result.Success ? "Passed" : "Failed";
             
-            // Create flat background box for the result
             var resultBadgeRect = new XRect(65, yPosition, 160, 35);
             DrawRoundedRectangle(gfx, resultBadgeRect, 6, new XSolidBrush(resultBgColor), new XPen(resultColor, 1));
             
-            // Center align text both horizontally and vertically within the box
             gfx.DrawString(resultText, new XFont("Segoe UI", 14, XFontStyle.Bold), new XSolidBrush(resultColor),
                 resultBadgeRect, XStringFormats.Center);
             yPosition += 50;
 
-            // Modern Document Statistics section with flat design
+            // Document Statistics section
             var statsRect = new XRect(50, yPosition, page.Width - 100, 30);
             DrawRoundedRectangle(gfx, statsRect, 6, new XSolidBrush(AccentGray), sectionBorderColor);
             
@@ -338,7 +379,7 @@ namespace DocumentValidator.Services
                 new XRect(65, yPosition + 6, page.Width - 130, 25), XStringFormats.TopLeft);
             yPosition += 40;
 
-            // Modern statistics with enhanced formatting
+            // Display statistics
             var statItems = new[]
             {
                 $"Page Count: {result.DocumentInfo.PageCount}",
@@ -356,7 +397,7 @@ namespace DocumentValidator.Services
                 yPosition += (int)itemHeight + 5;
             }
 
-            // Add detected organization info if available
+            // Add detected organization if available
             if (!string.IsNullOrEmpty(result.DocumentInfo.DetectedOrganizationName))
             {
                 var orgText = $"Detected Organization: {result.DocumentInfo.DetectedOrganizationName}";
@@ -370,9 +411,10 @@ namespace DocumentValidator.Services
 
             yPosition += 25;
 
-            // Modern Issues or Success section with flat design
+            // Issues and Success sections
             if (!result.Success)
             {
+                // Issues section
                 var issuesRect = new XRect(50, yPosition, page.Width - 100, 30);
                 DrawRoundedRectangle(gfx, issuesRect, 6, new XSolidBrush(ErrorLight), new XPen(ErrorRed, 1));
                 
@@ -380,6 +422,7 @@ namespace DocumentValidator.Services
                     new XRect(65, yPosition + 6, page.Width - 130, 25), XStringFormats.TopLeft);
                 yPosition += 40;
 
+                // List issues
                 for (int i = 0; i < result.MissingElements.Count; i++)
                 {
                     var issueText = $"• {result.MissingElements[i]}";
@@ -393,6 +436,7 @@ namespace DocumentValidator.Services
 
                 yPosition += 20;
 
+                // Suggested Actions if available
                 if (result.SuggestedActions.Any())
                 {
                     var actionsRect = new XRect(50, yPosition, page.Width - 100, 30);
@@ -416,6 +460,7 @@ namespace DocumentValidator.Services
             }
             else
             {
+                // Success section
                 var successRect = new XRect(50, yPosition, page.Width - 100, 50);
                 DrawRoundedRectangle(gfx, successRect, 6, new XSolidBrush(SuccessLight), new XPen(SuccessGreen, 1));
                 
@@ -425,7 +470,7 @@ namespace DocumentValidator.Services
                 yPosition += 60;
             }
 
-            // Modern footer with flat background
+            // Footer
             var footerRect = new XRect(0, page.Height - 50, page.Width, 50);
             gfx.DrawRectangle(new XSolidBrush(BackgroundGray), footerRect);
             gfx.DrawLine(new XPen(BorderGray, 1), 0, page.Height - 50, page.Width, page.Height - 50);
@@ -435,6 +480,14 @@ namespace DocumentValidator.Services
                 new XRect(0, page.Height - 30, page.Width, 20), XStringFormats.TopCenter);
         }
 
+        /// <summary>
+        /// Creates a page showing documents that couldn't be automatically categorized.
+        /// Includes explanation, table of documents with reasons, and next steps guidance.
+        /// </summary>
+        /// <param name="gfx">Graphics context for drawing</param>
+        /// <param name="page">PDF page to draw on</param>
+        /// <param name="skippedDocuments">List of documents requiring manual review</param>
+        /// <param name="organizationName">Organization name for context</param>
         private void AddSkippedDocumentsPage(XGraphics gfx, PdfPage page, List<SkippedDocument> skippedDocuments, string organizationName)
         {
             var font = new XFont("Segoe UI", 11);
@@ -444,19 +497,18 @@ namespace DocumentValidator.Services
 
             var yPosition = 40;
 
-            // Modern flat header with reduced height
-            var headerRect = new XRect(0, 0, page.Width, 80); // Reduced from 110 to 80
+            // Header with warning theme
+            var headerRect = new XRect(0, 0, page.Width, 80);
             gfx.DrawRectangle(new XSolidBrush(WarningOrange), headerRect);
 
-            // Add subtle drop shadow
-            var shadowRect = new XRect(0, 80, page.Width, 6); // Updated Y position
+            var shadowRect = new XRect(0, 80, page.Width, 6);
             gfx.DrawRectangle(new XSolidBrush(XColor.FromArgb(40, 0, 0, 0)), shadowRect);
 
             gfx.DrawString("Uncategorized Documents", fontLarge, XBrushes.White,
                 new XRect(0, yPosition, page.Width, 35), XStringFormats.TopCenter);
-            yPosition += 60; // Reduced spacing for shorter header
+            yPosition += 60;
 
-            // Modern explanation section with flat card design
+            // Explanation section
             var explanationRect = new XRect(50, yPosition, page.Width - 100, 60);
             DrawRoundedRectangle(gfx, explanationRect, 8, new XSolidBrush(WarningLight), new XPen(WarningOrange, 1));
 
@@ -465,7 +517,7 @@ namespace DocumentValidator.Services
                 new XRect(65, yPosition + 15, page.Width - 130, 45), 85);
             yPosition += 80;
 
-            // Enhanced table layout with modern proportions
+            // Table setup
             var pageWidth = page.Width - 100;
             var startX = 50;
 
@@ -477,7 +529,7 @@ namespace DocumentValidator.Services
 
             var headers = new[] { "Document Name", "Reason Skipped" };
 
-            // Modern flat table header
+            // Table header
             var headerTableRect = new XRect(startX, yPosition, pageWidth, 35);
             DrawRoundedRectangle(gfx, headerTableRect, 6, new XSolidBrush(WarningOrange), null);
 
@@ -496,20 +548,19 @@ namespace DocumentValidator.Services
             }
             yPosition += 35;
 
-            // Modern table rows with proper text wrapping to prevent truncation
+            // Table rows
             for (int index = 0; index < skippedDocuments.Count; index++)
             {
                 var document = skippedDocuments[index];
                 
-                // Calculate row height to accommodate full text without truncation
+                // Calculate row height based on content
                 var nameLines = WrapTextToWidth(gfx, document.FileName, font, columnWidths[0] - 24);
                 var reasonLines = WrapTextToWidth(gfx, document.Reason, font, columnWidths[1] - 24);
                 var maxLines = Math.Max(nameLines.Count, reasonLines.Count);
                 
-                // Calculate row height based on actual line count with proper padding
-                var rowHeight = Math.Max(50, (int)(maxLines * font.Height + 20)); // Minimum 50px height, 20px padding
+                var rowHeight = Math.Max(50, (int)(maxLines * font.Height + 20));
 
-                // Modern flat alternating row colors
+                // Alternate row colors
                 var rowColor = index % 2 == 0 ? XColor.FromArgb(254, 252, 246) : XColors.White;
                 
                 var rowRect = new XRect(startX, yPosition, pageWidth, rowHeight);
@@ -517,7 +568,7 @@ namespace DocumentValidator.Services
 
                 x = startX;
 
-                // Document Name column - display full text with proper wrapping
+                // Document Name column
                 DrawWrappedTextToFit(gfx, document.FileName, font, new XSolidBrush(TextPrimary),
                     new XRect(x + 12, yPosition + 10, columnWidths[0] - 24, rowHeight - 20));
                 
@@ -525,20 +576,20 @@ namespace DocumentValidator.Services
                     x + (int)columnWidths[0], yPosition + 5, x + (int)columnWidths[0], yPosition + rowHeight - 5);
                 x += (int)columnWidths[0];
 
-                // Reason column - display full text with proper wrapping to prevent truncation
+                // Reason column
                 DrawWrappedTextToFit(gfx, document.Reason, font, new XSolidBrush(XColor.FromArgb(146, 64, 14)),
                     new XRect(x + 12, yPosition + 10, columnWidths[1] - 24, rowHeight - 20));
 
                 yPosition += rowHeight;
 
-                // Check if we need a new page
+                // Page break check
                 if (yPosition > page.Height - 120)
                 {
                     break;
                 }
             }
 
-            // Modern note section with flat styling
+            // Note section
             yPosition += 30;
             var noteRect = new XRect(50, yPosition, page.Width - 100, 60);
             DrawRoundedRectangle(gfx, noteRect, 8, new XSolidBrush(XColor.FromArgb(254, 240, 138)), new XPen(WarningOrange, 1));
@@ -548,7 +599,7 @@ namespace DocumentValidator.Services
                 new XSolidBrush(XColor.FromArgb(146, 64, 14)),
                 new XRect(65, yPosition + 16, page.Width - 130, 40), 75);
 
-            // Modern footer with flat background
+            // Footer
             var footerRect = new XRect(0, page.Height - 50, page.Width, 50);
             gfx.DrawRectangle(new XSolidBrush(BackgroundGray), footerRect);
             gfx.DrawLine(new XPen(BorderGray, 1), 0, page.Height - 50, page.Width, page.Height - 50);
@@ -558,6 +609,13 @@ namespace DocumentValidator.Services
                 new XRect(0, page.Height - 30, page.Width, 20), XStringFormats.TopCenter);
         }
 
+        /// <summary>
+        /// Converts internal document type codes to user-friendly display names.
+        /// Maps technical identifiers like "tax-clearance-online" to readable names
+        /// like "Tax Clearance Certificate (Online)".
+        /// </summary>
+        /// <param name="documentType">Internal document type identifier</param>
+        /// <returns>Formatted display name for the document type</returns>
         private string FormatDocumentType(string documentType)
         {
             var documentTypeMap = new Dictionary<string, string>
@@ -582,12 +640,19 @@ namespace DocumentValidator.Services
             return documentTypeMap.TryGetValue(documentType, out var formatted) ? formatted : documentType;
         }
 
+        /// <summary>
+        /// Wraps text at word boundaries to fit within specified character limits.
+        /// Splits text into lines that don't exceed maxCharsPerLine, breaking at spaces
+        /// to maintain word integrity.
+        /// </summary>
+        /// <param name="text">Text to wrap</param>
+        /// <param name="maxCharsPerLine">Maximum characters allowed per line</param>
+        /// <returns>List of text lines formatted for display</returns>
         private List<string> WrapText(string text, int maxCharsPerLine)
         {
             if (string.IsNullOrEmpty(text))
                 return new List<string> { "" };
 
-            // Handle very long single words by allowing them to exceed the line limit slightly
             var words = text.Split(' ');
             var lines = new List<string>();
             var currentLine = "";
@@ -596,29 +661,24 @@ namespace DocumentValidator.Services
             {
                 if (string.IsNullOrEmpty(currentLine))
                 {
-                    // First word on the line
                     currentLine = word;
                 }
                 else 
                 {
                     var potentialLine = currentLine + " " + word;
                     
-                    // If adding this word would exceed the limit
                     if (potentialLine.Length > maxCharsPerLine)
                     {
-                        // If current line is not empty, finish it and start new line
                         lines.Add(currentLine);
                         currentLine = word;
                     }
                     else
                     {
-                        // Word fits, add it to current line
                         currentLine = potentialLine;
                     }
                 }
             }
 
-            // Add the last line if it has content
             if (!string.IsNullOrEmpty(currentLine))
             {
                 lines.Add(currentLine);
@@ -627,6 +687,17 @@ namespace DocumentValidator.Services
             return lines.Any() ? lines : new List<string> { "" };
         }
 
+        /// <summary>
+        /// Renders wrapped text within a rectangular area.
+        /// Uses WrapText to break content into lines, then draws each line
+        /// with appropriate vertical spacing.
+        /// </summary>
+        /// <param name="gfx">Graphics context for drawing</param>
+        /// <param name="text">Text content to render</param>
+        /// <param name="font">Font to use for text</param>
+        /// <param name="brush">Color/style for text</param>
+        /// <param name="rect">Rectangle defining the drawing area</param>
+        /// <param name="maxCharsPerLine">Character limit for line wrapping</param>
         private void DrawWrappedText(XGraphics gfx, string text, XFont font, XBrush brush, XRect rect, int maxCharsPerLine)
         {
             var lines = WrapText(text, maxCharsPerLine);
@@ -640,17 +711,37 @@ namespace DocumentValidator.Services
             }
         }
 
+        /// <summary>
+        /// Calculates the height needed for a table row based on text content.
+        /// Determines how many lines each text column needs, then returns height
+        /// for the column requiring the most space, with minimum height enforcement.
+        /// </summary>
+        /// <param name="text1">First column text</param>
+        /// <param name="text2">Second column text</param>
+        /// <param name="maxChars1">Character limit for first column</param>
+        /// <param name="maxChars2">Character limit for second column</param>
+        /// <param name="lineHeight">Height of a single line of text</param>
+        /// <returns>Required row height in pixels</returns>
         private int CalculateRequiredRowHeight(string text1, string text2, int maxChars1, int maxChars2, double lineHeight)
         {
             var lines1 = WrapText(text1, maxChars1).Count;
             var lines2 = WrapText(text2, maxChars2).Count;
             var maxLines = Math.Max(lines1, lines2);
             
-            // Ensure minimum height for readability, with better spacing
-            var calculatedHeight = (int)(maxLines * lineHeight + 12); // Increased padding from 10 to 12
-            return Math.Max(calculatedHeight, 40); // Increased minimum height from 35 to 40
+            var calculatedHeight = (int)(maxLines * lineHeight + 12);
+            return Math.Max(calculatedHeight, 40);
         }
 
+        /// <summary>
+        /// Wraps text using precise font metrics for pixel-perfect width control.
+        /// Unlike character-based wrapping, this uses actual measured text width
+        /// to determine line breaks, ensuring content fits exactly within boundaries.
+        /// </summary>
+        /// <param name="gfx">Graphics context for measuring text</param>
+        /// <param name="text">Text to wrap</param>
+        /// <param name="font">Font for measuring text width</param>
+        /// <param name="maxWidth">Maximum pixel width for each line</param>
+        /// <returns>List of text lines that fit within width constraints</returns>
         private List<string> WrapTextToWidth(XGraphics gfx, string text, XFont font, double maxWidth)
         {
             if (string.IsNullOrEmpty(text))
@@ -664,7 +755,6 @@ namespace DocumentValidator.Services
             {
                 if (string.IsNullOrEmpty(currentLine))
                 {
-                    // First word on the line
                     currentLine = word;
                 }
                 else 
@@ -672,22 +762,18 @@ namespace DocumentValidator.Services
                     var potentialLine = currentLine + " " + word;
                     var textSize = gfx.MeasureString(potentialLine, font);
                     
-                    // If adding this word would exceed the width
                     if (textSize.Width > maxWidth)
                     {
-                        // If current line is not empty, finish it and start new line
                         lines.Add(currentLine);
                         currentLine = word;
                     }
                     else
                     {
-                        // Word fits, add it to current line
                         currentLine = potentialLine;
                     }
                 }
             }
 
-            // Add the last line if it has content
             if (!string.IsNullOrEmpty(currentLine))
             {
                 lines.Add(currentLine);
@@ -696,6 +782,16 @@ namespace DocumentValidator.Services
             return lines.Any() ? lines : new List<string> { "" };
         }
 
+        /// <summary>
+        /// Renders text with precise width-based wrapping within a rectangle.
+        /// Uses WrapTextToWidth for accurate line breaks based on actual font metrics,
+        /// then draws each line with proper vertical spacing.
+        /// </summary>
+        /// <param name="gfx">Graphics context for drawing</param>
+        /// <param name="text">Text content to render</param>
+        /// <param name="font">Font for text rendering</param>
+        /// <param name="brush">Color/style for text</param>
+        /// <param name="rect">Rectangle defining the drawing area</param>
         private void DrawWrappedTextToFit(XGraphics gfx, string text, XFont font, XBrush brush, XRect rect)
         {
             var lines = WrapTextToWidth(gfx, text, font, rect.Width);
@@ -709,22 +805,27 @@ namespace DocumentValidator.Services
             }
         }
 
+        /// <summary>
+        /// Draws a rectangle with optional fill and border.
+        /// Currently implements standard rectangles. The cornerRadius parameter
+        /// is reserved for future rounded corner implementation when library support improves.
+        /// </summary>
+        /// <param name="gfx">Graphics context for drawing</param>
+        /// <param name="rect">Rectangle dimensions and position</param>
+        /// <param name="cornerRadius">Reserved for future rounded corner support</param>
+        /// <param name="fillBrush">Optional fill color/pattern</param>
+        /// <param name="borderPen">Optional border style</param>
         private void DrawRoundedRectangle(XGraphics gfx, XRect rect, int cornerRadius, XBrush? fillBrush, XPen? borderPen)
         {
-            // Draw main rectangle (fill)
             if (fillBrush != null)
             {
                 gfx.DrawRectangle(fillBrush, rect);
             }
             
-            // Draw border if specified
             if (borderPen != null)
             {
                 gfx.DrawRectangle(borderPen, rect);
             }
-            
-            // For now, we'll use regular rectangles since PdfSharp doesn't support rounded rectangles natively
-            // In a future enhancement, we could implement proper rounded corners using path drawing
         }
     }
 } 
