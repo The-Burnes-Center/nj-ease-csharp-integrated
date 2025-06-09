@@ -80,8 +80,10 @@ namespace DocumentValidator.Functions
                         results.Add(new ValidationResult
                         {
                             FileName = file.FileName ?? "Unknown",
-                            Error = "Missing required file properties (FileName or FileContentBase64)",
-                            Success = false
+                            Success = false,
+                            MissingElements = new List<string> { "Missing required file properties (FileName or FileContentBase64)" },
+                            SuggestedActions = new List<string> { "Ensure both FileName and FileContentBase64 are provided" },
+                            DocumentInfo = new DocumentInfo { PageCount = 0, WordCount = 0 }
                         });
                         continue;
                     }
@@ -100,8 +102,11 @@ namespace DocumentValidator.Functions
                         results.Add(new ValidationResult
                         {
                             FileName = file.FileName,
-                            Error = "Invalid base64 content",
-                            Success = false
+                            DocumentType = "unknown",
+                            Success = false,
+                            MissingElements = new List<string> { "Invalid base64 content" },
+                            SuggestedActions = new List<string> { "Verify the file content is properly base64 encoded" },
+                            DocumentInfo = new DocumentInfo { PageCount = 0, WordCount = 0 }
                         });
                         continue;
                     }
@@ -177,8 +182,7 @@ namespace DocumentValidator.Functions
                     skippedDocuments.Add(new SkippedDocument
                     {
                         FileName = fileName,
-                        Reason = "Document type could not be identified",
-                        TypeDetection = validationResult.DocumentInfo.TypeDetection
+                        Reason = "Document type could not be identified"
                     });
                 }
             }
@@ -189,7 +193,6 @@ namespace DocumentValidator.Functions
                 {
                     FileName = fileName,
                     DocumentType = "unknown",
-                    Error = error.Message ?? "Unknown error during processing",
                     Success = false,
                     MissingElements = new List<string> { "Document processing failed" },
                     SuggestedActions = new List<string> { "Check if the document is valid and properly formatted" },

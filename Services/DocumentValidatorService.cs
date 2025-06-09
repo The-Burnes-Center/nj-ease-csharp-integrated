@@ -159,7 +159,7 @@ namespace DocumentValidator.Services
                 var contentLower = content.ToLower();
 
                 // Detect document type from content
-                var (detectedType, scores) = DetectDocumentTypeWithScoresAsync(content, contentLower, pages, keyValuePairs);
+                var detectedType = DetectDocumentType(content, contentLower, pages, keyValuePairs);
 
                 // Use provided documentType if detection fails
                 var finalDocumentType = detectedType != "unknown" ? detectedType : documentType;
@@ -189,13 +189,7 @@ namespace DocumentValidator.Services
                     }).ToList() ?? new List<LanguageInfo>(),
                     ContainsHandwriting = styles?.Any(style => style.IsHandwritten == true) ?? false,
                     DocumentType = finalDocumentType,
-                    DetectedOrganizationName = validationResults.DetectedOrganizationName,
-                    OriginalDocumentType = documentType != finalDocumentType ? documentType : null,
-                    TypeDetection = new TypeDetection
-                    {
-                        TopScores = scores.Take(3).ToList(),
-                        DetectionConfidence = scores.Any() ? (scores.First().Score / (double)scores.First().Threshold).ToString("F2") : "0"
-                    }
+                    DetectedOrganizationName = validationResults.DetectedOrganizationName
                 };
 
                 return new DocumentValidation
@@ -1413,7 +1407,7 @@ namespace DocumentValidator.Services
             return false;
         }
 
-        private (string detectedType, List<DocumentTypeScore> scores) DetectDocumentTypeWithScoresAsync(string content, string contentLower, IReadOnlyList<DocumentPage> pages, IReadOnlyList<DocumentKeyValuePair> keyValuePairs)
+        private string DetectDocumentType(string content, string contentLower, IReadOnlyList<DocumentPage> pages, IReadOnlyList<DocumentKeyValuePair> keyValuePairs)
         {
             var documentTypePatterns = new List<DocumentTypePattern>
             {
@@ -1602,7 +1596,7 @@ namespace DocumentValidator.Services
                 }
             };
 
-            var scores = documentTypePatterns.Select(docType => new DocumentTypeScore
+            var scores = documentTypePatterns.Select(docType => new
             {
                 Type = docType.Type,
                 Score = CalculateScore(docType, contentLower),
@@ -1622,7 +1616,7 @@ namespace DocumentValidator.Services
                 detectedType = isManual ? "tax-clearance-manual" : "tax-clearance-online";
             }
 
-            return (detectedType, scores);
+            return detectedType;
         }
 
         private int CalculateScore(DocumentTypePattern docType, string contentLower)
