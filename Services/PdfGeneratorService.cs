@@ -8,15 +8,22 @@ namespace DocumentValidator.Services
 {
     public class PdfGeneratorService
     {
-        // Professional color scheme
-        private readonly XColor PrimaryBlue = XColor.FromArgb(41, 98, 155);
-        private readonly XColor SecondaryBlue = XColor.FromArgb(52, 144, 220);
-        private readonly XColor AccentGray = XColor.FromArgb(248, 249, 250);
-        private readonly XColor BorderGray = XColor.FromArgb(206, 212, 218);
-        private readonly XColor SuccessGreen = XColor.FromArgb(40, 167, 69);
-        private readonly XColor WarningRed = XColor.FromArgb(220, 53, 69);
-        private readonly XColor TextDark = XColor.FromArgb(33, 37, 41);
-        private readonly XColor TextMuted = XColor.FromArgb(108, 117, 125);
+        // Modern color palette inspired by contemporary design systems
+        private readonly XColor PrimaryBlue = XColor.FromArgb(37, 99, 235); // Modern blue (blue-600)
+        private readonly XColor PrimaryDark = XColor.FromArgb(30, 64, 175); // Darker blue (blue-700)
+        private readonly XColor SecondaryBlue = XColor.FromArgb(59, 130, 246); // Lighter blue (blue-500)
+        private readonly XColor AccentGray = XColor.FromArgb(249, 250, 251); // Very light gray (gray-50)
+        private readonly XColor BackgroundGray = XColor.FromArgb(243, 244, 246); // Light gray (gray-100)
+        private readonly XColor BorderGray = XColor.FromArgb(229, 231, 235); // Border gray (gray-200)
+        private readonly XColor SuccessGreen = XColor.FromArgb(16, 185, 129); // Modern green (emerald-500)
+        private readonly XColor SuccessLight = XColor.FromArgb(209, 250, 229); // Light green background
+        private readonly XColor ErrorRed = XColor.FromArgb(239, 68, 68); // Modern red (red-500)
+        private readonly XColor ErrorLight = XColor.FromArgb(254, 226, 226); // Light red background
+        private readonly XColor WarningOrange = XColor.FromArgb(245, 158, 11); // Modern orange (amber-500)
+        private readonly XColor WarningLight = XColor.FromArgb(254, 243, 199); // Light orange background
+        private readonly XColor TextPrimary = XColor.FromArgb(17, 24, 39); // Dark text (gray-900)
+        private readonly XColor TextSecondary = XColor.FromArgb(75, 85, 99); // Medium text (gray-600)
+        private readonly XColor TextMuted = XColor.FromArgb(156, 163, 175); // Light text (gray-400)
 
         public async Task<byte[]> GenerateConsolidatedReportAsync(List<ValidationResult> validationResults, string organizationName, List<SkippedDocument> skippedDocuments)
         {
@@ -38,94 +45,118 @@ namespace DocumentValidator.Services
                 var page = document.AddPage();
                 var gfx = XGraphics.FromPdfPage(page);
                 
-                // Enhanced font collection
-                var font = new XFont("Arial", 11);
-                var fontBold = new XFont("Arial", 11, XFontStyle.Bold);
-                var fontLarge = new XFont("Arial", 20, XFontStyle.Bold);
-                var fontMedium = new XFont("Arial", 14, XFontStyle.Bold);
-                var fontSmall = new XFont("Arial", 9);
+                // Modern font collection with better hierarchy
+                var font = new XFont("Segoe UI", 11);
+                var fontBold = new XFont("Segoe UI", 11, XFontStyle.Bold);
+                var fontLarge = new XFont("Segoe UI", 24, XFontStyle.Bold); // Increased from 20
+                var fontMedium = new XFont("Segoe UI", 16, XFontStyle.Bold); // Increased from 14
+                var fontSmall = new XFont("Segoe UI", 9);
+                var fontTiny = new XFont("Segoe UI", 8);
 
-                var yPosition = 40;
+                var yPosition = 50; // Increased top margin
 
-                // Add elegant header with background
-                var headerRect = new XRect(0, 0, page.Width, 130);
+                // Modern header with sophisticated gradient - increased height
+                var headerRect = new XRect(0, 0, page.Width, 160); // Increased from 140 to 160
                 var headerBrush = new XLinearGradientBrush(
-                    new XPoint(0, 0), new XPoint(0, 130),
-                    PrimaryBlue, SecondaryBlue);
+                    new XPoint(0, 0), new XPoint(0, 160), // Updated to match new height
+                    PrimaryBlue, PrimaryDark);
                 gfx.DrawRectangle(headerBrush, headerRect);
 
-                // Add report header with white text on blue background
+                // Add subtle shadow effect to header
+                var shadowRect = new XRect(0, 160, page.Width, 8); // Updated Y position
+                var shadowBrush = new XLinearGradientBrush(
+                    new XPoint(0, 160), new XPoint(0, 168), // Updated positions
+                    XColor.FromArgb(100, 0, 0, 0), XColor.FromArgb(0, 0, 0, 0));
+                gfx.DrawRectangle(shadowBrush, shadowRect);
+
+                // Modern title with better spacing
                 gfx.DrawString("NJ EASE Document Validation Report", fontLarge, XBrushes.White,
-                    new XRect(0, yPosition, page.Width, 35), XStringFormats.TopCenter);
-                yPosition += 45;
+                    new XRect(0, yPosition, page.Width, 40), XStringFormats.TopCenter);
+                yPosition += 50;
 
-                gfx.DrawString($"Organization: {organizationName}", new XFont("Arial", 13, XFontStyle.Bold), XBrushes.White,
-                    new XRect(0, yPosition, page.Width, 20), XStringFormats.TopCenter);
-                yPosition += 25;
+                gfx.DrawString($"Organization: {organizationName}", new XFont("Segoe UI", 14, XFontStyle.Regular), 
+                    new XSolidBrush(XColor.FromArgb(240, 245, 251)),
+                    new XRect(0, yPosition, page.Width, 25), XStringFormats.TopCenter);
+                yPosition += 30;
 
-                gfx.DrawString($"Generated: {DateTime.Now:MMMM dd, yyyy 'at' hh:mm tt}", fontSmall, new XSolidBrush(XColor.FromArgb(240, 248, 255)),
+                gfx.DrawString($"Generated: {DateTime.Now:MMMM dd, yyyy 'at' hh:mm tt}", 
+                    new XFont("Segoe UI", 10), new XSolidBrush(XColor.FromArgb(219, 234, 254)),
                     new XRect(0, yPosition, page.Width, 15), XStringFormats.TopCenter);
-                yPosition += 40;
+                yPosition += 50; // Increased spacing to account for taller header
 
-                // Add summary section with enhanced styling
-                var summaryHeaderRect = new XRect(40, yPosition, page.Width - 80, 35);
-                gfx.DrawRectangle(new XSolidBrush(AccentGray), summaryHeaderRect);
-                gfx.DrawRectangle(new XPen(BorderGray, 1), summaryHeaderRect);
+                // Modern summary section with enhanced card design
+                var summaryCardRect = new XRect(50, yPosition, page.Width - 100, 45); // More padding
+                var summaryBrush = new XLinearGradientBrush(
+                    new XPoint(0, yPosition), new XPoint(0, yPosition + 45),
+                    XColors.White, AccentGray);
+                gfx.DrawRectangle(summaryBrush, summaryCardRect);
+                
+                // Subtle border with rounded corner effect
+                gfx.DrawRectangle(new XPen(BorderGray, 2), summaryCardRect);
+                
+                // Add subtle inner shadow
+                var innerShadowRect = new XRect(52, yPosition + 2, page.Width - 104, 41);
+                gfx.DrawRectangle(new XPen(XColor.FromArgb(30, 0, 0, 0), 1), innerShadowRect);
 
-                gfx.DrawString("VALIDATION SUMMARY", fontMedium, new XSolidBrush(PrimaryBlue),
-                    new XRect(50, yPosition + 8, page.Width - 100, 20), XStringFormats.TopLeft);
-                yPosition += 45;
+                gfx.DrawString("Validation Summary", new XFont("Segoe UI", 15, XFontStyle.Bold), 
+                    new XSolidBrush(PrimaryDark),
+                    new XRect(65, yPosition + 12, page.Width - 130, 25), XStringFormats.TopLeft);
+                yPosition += 65;
 
-                // Calculate table layout with enhanced spacing
-                var pageWidth = page.Width - 80;
-                var startX = 40;
+                // Enhanced table layout with better proportions
+                var pageWidth = page.Width - 100; // Increased margins
+                var startX = 50;
 
                 var columnWidths = new double[]
                 {
-                    0.40 * pageWidth, // Document Name - increased from 35%
-                    0.38 * pageWidth, // Document Type - increased from 35%
-                    0.12 * pageWidth, // Status - decreased from 15%
-                    0.10 * pageWidth  // Issues - decreased from 15%
+                    0.38 * pageWidth, // Document Name
+                    0.36 * pageWidth, // Document Type  
+                    0.14 * pageWidth, // Status
+                    0.12 * pageWidth  // Issues
                 };
 
                 var headers = new[] { "Document Name", "Document Type", "Status", "Issues" };
 
-                // Draw enhanced table header with gradient
-                var headerTableRect = new XRect(startX, yPosition, pageWidth, 25);
+                // Modern table header with sophisticated styling
+                var headerTableRect = new XRect(startX, yPosition, pageWidth, 35); // Increased height
                 var tableBrush = new XLinearGradientBrush(
-                    new XPoint(0, yPosition), new XPoint(0, yPosition + 25),
-                    PrimaryBlue, SecondaryBlue);
+                    new XPoint(0, yPosition), new XPoint(0, yPosition + 35),
+                    PrimaryBlue, PrimaryDark);
                 gfx.DrawRectangle(tableBrush, headerTableRect);
-                gfx.DrawRectangle(new XPen(BorderGray, 1.5), headerTableRect);
 
                 var x = startX;
                 for (int i = 0; i < headers.Length; i++)
                 {
-                    // Add vertical separators
+                    // Modern vertical separators with transparency
                     if (i > 0)
                     {
-                        gfx.DrawLine(new XPen(XColor.FromArgb(255, 255, 255, 100), 1), 
-                            x, yPosition + 3, x, yPosition + 22);
+                        gfx.DrawLine(new XPen(XColor.FromArgb(120, 255, 255, 255), 1.5), 
+                            x, yPosition + 5, x, yPosition + 30);
                     }
                     
-                    gfx.DrawString(headers[i], new XFont("Arial", 10, XFontStyle.Bold), XBrushes.White,
-                        new XRect(x + 8, yPosition + 6, columnWidths[i] - 16, 15), XStringFormats.TopLeft);
+                    gfx.DrawString(headers[i], new XFont("Segoe UI", 11, XFontStyle.Bold), XBrushes.White,
+                        new XRect(x + 12, yPosition + 10, columnWidths[i] - 24, 20), XStringFormats.TopLeft);
                     x += (int)columnWidths[i];
                 }
-                yPosition += 25;
+                yPosition += 35;
 
-                // Draw enhanced table rows
+                // Draw enhanced table rows with modern styling and proper text wrapping
                 for (int index = 0; index < validResults.Count; index++)
                 {
                     var result = validResults[index];
                     var documentTypeName = FormatDocumentType(result.DocumentType);
                     
-                    // Calculate dynamic row height based on text wrapping needs
-                    var rowHeight = CalculateRequiredRowHeight(result.FileName, documentTypeName, 45, 40, font.Height);
+                    // Calculate row height to accommodate full text without truncation
+                    var nameLines = WrapTextToWidth(gfx, result.FileName, font, columnWidths[0] - 24);
+                    var typeLines = WrapTextToWidth(gfx, documentTypeName, font, columnWidths[1] - 24);
+                    var maxLines = Math.Max(nameLines.Count, typeLines.Count);
+                    
+                    // Calculate row height based on actual line count with proper padding
+                    var rowHeight = Math.Max(50, (int)(maxLines * font.Height + 20)); // Minimum 50px height, 20px padding
 
-                    // Enhanced alternating row colors with subtle gradients
+                    // Modern alternating row colors with subtle gradients
                     var rowColor1 = index % 2 == 0 ? XColor.FromArgb(252, 253, 254) : XColors.White;
-                    var rowColor2 = index % 2 == 0 ? XColor.FromArgb(248, 249, 250) : XColor.FromArgb(254, 254, 254);
+                    var rowColor2 = index % 2 == 0 ? BackgroundGray : XColor.FromArgb(254, 254, 254);
                     
                     var rowRect = new XRect(startX, yPosition, pageWidth, rowHeight);
                     var rowBrush = new XLinearGradientBrush(
@@ -136,49 +167,54 @@ namespace DocumentValidator.Services
 
                     x = startX;
 
-                    // Document Name column with enhanced styling
-                    DrawWrappedText(gfx, result.FileName, font, new XSolidBrush(TextDark),
-                        new XRect(x + 8, yPosition + 6, columnWidths[0] - 16, rowHeight - 12), 45);
+                    // Document Name column - display full text with proper wrapping
+                    DrawWrappedTextToFit(gfx, result.FileName, font, new XSolidBrush(TextPrimary),
+                        new XRect(x + 12, yPosition + 10, columnWidths[0] - 24, rowHeight - 20));
                     
-                    // Add subtle vertical separator
+                    // Modern vertical separator
                     gfx.DrawLine(new XPen(BorderGray, 0.5), 
                         x + (int)columnWidths[0], yPosition, x + (int)columnWidths[0], yPosition + rowHeight);
                     x += (int)columnWidths[0];
 
-                    // Document Type column with enhanced styling
-                    DrawWrappedText(gfx, documentTypeName, font, new XSolidBrush(TextDark),
-                        new XRect(x + 8, yPosition + 6, columnWidths[1] - 16, rowHeight - 12), 40);
+                    // Document Type column - display full text with proper wrapping
+                    DrawWrappedTextToFit(gfx, documentTypeName, font, new XSolidBrush(TextPrimary),
+                        new XRect(x + 12, yPosition + 10, columnWidths[1] - 24, rowHeight - 20));
                     
                     gfx.DrawLine(new XPen(BorderGray, 0.5), 
                         x + (int)columnWidths[1], yPosition, x + (int)columnWidths[1], yPosition + rowHeight);
                     x += (int)columnWidths[1];
 
-                    // Enhanced Status column with badges
-                    var statusColor = result.Success ? SuccessGreen : WarningRed;
-                    var statusBgColor = result.Success ? 
-                        XColor.FromArgb(212, 237, 218) : XColor.FromArgb(248, 215, 218);
+                    // Modern Status column with enhanced badges
+                    var statusColor = result.Success ? SuccessGreen : ErrorRed;
+                    var statusBgColor = result.Success ? SuccessLight : ErrorLight;
                     var statusText = result.Success ? "PASSED" : "FAILED";
+                    var statusBorderColor = result.Success ? SuccessGreen : ErrorRed;
                     
-                    // Draw status badge background
-                    var statusBadgeRect = new XRect(x + 6, yPosition + 8, columnWidths[2] - 12, 18);
+                    // Draw modern status badge with rounded corners effect
+                    var statusBadgeRect = new XRect(x + 8, yPosition + 10, columnWidths[2] - 16, 22);
                     gfx.DrawRectangle(new XSolidBrush(statusBgColor), statusBadgeRect);
-                    gfx.DrawRectangle(new XPen(statusColor, 1), statusBadgeRect);
+                    gfx.DrawRectangle(new XPen(statusBorderColor, 1.5), statusBadgeRect);
                     
-                    gfx.DrawString(statusText, new XFont("Arial", 9, XFontStyle.Bold), new XSolidBrush(statusColor),
-                        new XRect(x + 8, yPosition + 9, columnWidths[2] - 16, 15), XStringFormats.TopCenter);
+                    // Add subtle inner highlight
+                    var statusHighlight = new XRect(x + 9, yPosition + 11, columnWidths[2] - 18, 1);
+                    gfx.DrawRectangle(new XSolidBrush(XColor.FromArgb(50, 255, 255, 255)), statusHighlight);
+                    
+                    // Center align text both horizontally and vertically within the badge
+                    gfx.DrawString(statusText, new XFont("Segoe UI", 9, XFontStyle.Bold), new XSolidBrush(statusColor),
+                        statusBadgeRect, XStringFormats.Center);
                     
                     gfx.DrawLine(new XPen(BorderGray, 0.5), 
                         x + (int)columnWidths[2], yPosition, x + (int)columnWidths[2], yPosition + rowHeight);
                     x += (int)columnWidths[2];
 
-                    // Enhanced Issues column
+                    // Modern Issues column
                     var issuesText = result.MissingElements.Count > 0
-                        ? $"{result.MissingElements.Count} ISSUE{(result.MissingElements.Count > 1 ? "S" : "")}"
-                        : "NONE";
-                    var issuesColor = result.MissingElements.Count > 0 ? new XSolidBrush(WarningRed) : new XSolidBrush(SuccessGreen);
+                        ? $"{result.MissingElements.Count}"
+                        : "None";
+                    var issuesColor = result.MissingElements.Count > 0 ? new XSolidBrush(ErrorRed) : new XSolidBrush(SuccessGreen);
                     
-                    gfx.DrawString(issuesText, new XFont("Arial", 9, XFontStyle.Bold), issuesColor,
-                        new XRect(x + 8, yPosition + 6, columnWidths[3] - 16, rowHeight - 12), XStringFormats.TopLeft);
+                    gfx.DrawString(issuesText, new XFont("Segoe UI", 9, XFontStyle.Bold), issuesColor,
+                        new XRect(x + 12, yPosition + 10, columnWidths[3] - 24, rowHeight - 20), XStringFormats.TopLeft);
 
                     yPosition += rowHeight;
 
@@ -191,15 +227,23 @@ namespace DocumentValidator.Services
                     }
                 }
 
-                // Add enhanced information section
-                yPosition += 25;
-                var infoRect = new XRect(40, yPosition, page.Width - 80, 35);
-                gfx.DrawRectangle(new XSolidBrush(XColor.FromArgb(255, 243, 205)), infoRect);
-                gfx.DrawRectangle(new XPen(XColor.FromArgb(255, 193, 7), 1), infoRect);
+                // Modern information section
+                yPosition += 30;
+                var infoRect = new XRect(50, yPosition, page.Width - 100, 45);
+                var infoBrush = new XLinearGradientBrush(
+                    new XPoint(0, yPosition), new XPoint(0, yPosition + 45),
+                    WarningLight, XColor.FromArgb(252, 211, 77));
+                gfx.DrawRectangle(infoBrush, infoRect);
+                gfx.DrawRectangle(new XPen(WarningOrange, 2), infoRect);
+
+                // Add modern accent line
+                gfx.DrawRectangle(new XSolidBrush(WarningOrange), 
+                    new XRect(50, yPosition, page.Width - 100, 4));
 
                 var infoText = "Detailed validation results for each document are provided on the following pages.";
-                gfx.DrawString(infoText, new XFont("Arial", 11, XFontStyle.Bold), new XSolidBrush(XColor.FromArgb(133, 100, 4)),
-                    new XRect(50, yPosition + 10, page.Width - 100, 20), XStringFormats.TopLeft);
+                gfx.DrawString(infoText, new XFont("Segoe UI", 12, XFontStyle.Regular), 
+                    new XSolidBrush(XColor.FromArgb(146, 64, 14)),
+                    new XRect(65, yPosition + 14, page.Width - 130, 25), XStringFormats.TopLeft);
 
                 // Add detailed validation results for each document on separate pages
                 foreach (var result in validResults)
@@ -244,38 +288,54 @@ namespace DocumentValidator.Services
         {
             if (result?.DocumentInfo == null) return;
 
-            var font = new XFont("Arial", 11);
-            var fontBold = new XFont("Arial", 12, XFontStyle.Bold);
-            var fontLarge = new XFont("Arial", 18, XFontStyle.Bold);
-            var fontMedium = new XFont("Arial", 14, XFontStyle.Bold);
+            var font = new XFont("Segoe UI", 11);
+            var fontBold = new XFont("Segoe UI", 12, XFontStyle.Bold);
+            var fontLarge = new XFont("Segoe UI", 20, XFontStyle.Bold); // Increased from 18
+            var fontMedium = new XFont("Segoe UI", 15, XFontStyle.Bold); // Increased from 14
 
-            var yPosition = 30;
+            var yPosition = 40; // Increased from 30
 
-            // Enhanced header with gradient background
-            var headerRect = new XRect(0, 0, page.Width, 80);
+            // Modern header with reduced height
+            var headerRect = new XRect(0, 0, page.Width, 80); // Reduced from 110 to 80
             var headerBrush = new XLinearGradientBrush(
-                new XPoint(0, 0), new XPoint(0, 80),
-                PrimaryBlue, SecondaryBlue);
+                new XPoint(0, 0), new XPoint(0, 80), // Updated to match new height
+                PrimaryBlue, PrimaryDark);
             gfx.DrawRectangle(headerBrush, headerRect);
 
-            gfx.DrawString("Document Validation Details", fontLarge, XBrushes.White,
-                new XRect(0, yPosition, page.Width, 30), XStringFormats.TopCenter);
-            yPosition += 60;
+            // Add subtle shadow
+            var shadowRect = new XRect(0, 80, page.Width, 6); // Updated Y position
+            var shadowBrush = new XLinearGradientBrush(
+                new XPoint(0, 80), new XPoint(0, 86), // Updated positions
+                XColor.FromArgb(80, 0, 0, 0), XColor.FromArgb(0, 0, 0, 0));
+            gfx.DrawRectangle(shadowBrush, shadowRect);
 
-            // Enhanced section styling
-            var sectionHeaderStyle = new XFont("Arial", 13, XFontStyle.Bold);
-            var sectionBgColor = new XSolidBrush(AccentGray);
-            var sectionBorderColor = new XPen(BorderGray, 1);
+            // Display document type as the header instead of generic title
+            var documentTypeTitle = FormatDocumentType(result.DocumentType);
+            gfx.DrawString(documentTypeTitle, fontLarge, XBrushes.White,
+                new XRect(0, yPosition, page.Width, 35), XStringFormats.TopCenter);
+            yPosition += 60; // Reduced spacing to account for shorter header
 
-            // Document Details section
-            var detailsRect = new XRect(40, yPosition, page.Width - 80, 25);
-            gfx.DrawRectangle(sectionBgColor, detailsRect);
+            // Modern section styling
+            var sectionHeaderStyle = new XFont("Segoe UI", 14, XFontStyle.Bold); // Increased from 13
+            var sectionBgBrush = new XLinearGradientBrush(
+                new XPoint(0, 0), new XPoint(0, 30),
+                AccentGray, BackgroundGray);
+            var sectionBorderColor = new XPen(BorderGray, 1.5); // Increased border width
+
+            // Document Details section with modern card design
+            var detailsRect = new XRect(50, yPosition, page.Width - 100, 30); // Increased margins
+            gfx.DrawRectangle(sectionBgBrush, detailsRect);
             gfx.DrawRectangle(sectionBorderColor, detailsRect);
-            gfx.DrawString("DOCUMENT DETAILS", sectionHeaderStyle, new XSolidBrush(PrimaryBlue),
-                new XRect(50, yPosition + 5, page.Width - 100, 20), XStringFormats.TopLeft);
-            yPosition += 35;
+            
+            // Add subtle accent line
+            gfx.DrawRectangle(new XSolidBrush(PrimaryBlue), 
+                new XRect(50, yPosition, page.Width - 100, 3));
+            
+            gfx.DrawString("Document Details", sectionHeaderStyle, new XSolidBrush(PrimaryDark),
+                new XRect(65, yPosition + 6, page.Width - 130, 25), XStringFormats.TopLeft);
+            yPosition += 40;
 
-            // Document info with enhanced styling
+            // Document info with modern styling and better spacing
             var infoItems = new[]
             {
                 $"Document Name: {result.FileName}",
@@ -288,93 +348,106 @@ namespace DocumentValidator.Services
                 var itemLines = WrapText(item, 80);
                 var itemHeight = itemLines.Count * font.Height;
                 
-                DrawWrappedText(gfx, item, font, new XSolidBrush(TextDark),
-                    new XRect(50, yPosition, page.Width - 100, itemHeight), 80);
-                yPosition += (int)itemHeight + 3; // Small spacing between items
+                DrawWrappedText(gfx, item, font, new XSolidBrush(TextPrimary),
+                    new XRect(65, yPosition, page.Width - 130, itemHeight), 80);
+                yPosition += (int)itemHeight + 5; // Increased spacing
             }
-            yPosition += 15;
+            yPosition += 20;
 
-            // Validation Summary section
-            var summaryRect = new XRect(40, yPosition, page.Width - 80, 25);
-            gfx.DrawRectangle(sectionBgColor, summaryRect);
+            // Modern Validation Summary section
+            var summaryRect = new XRect(50, yPosition, page.Width - 100, 30);
+            gfx.DrawRectangle(sectionBgBrush, summaryRect);
             gfx.DrawRectangle(sectionBorderColor, summaryRect);
-            gfx.DrawString("VALIDATION SUMMARY", sectionHeaderStyle, new XSolidBrush(PrimaryBlue),
-                new XRect(50, yPosition + 5, page.Width - 100, 20), XStringFormats.TopLeft);
-            yPosition += 35;
-
-            // Enhanced overall result with badge
-            var resultColor = result.Success ? SuccessGreen : WarningRed;
-            var resultBgColor = result.Success ? 
-                XColor.FromArgb(212, 237, 218) : XColor.FromArgb(248, 215, 218);
-            var resultText = result.Success ? "VALIDATION PASSED" : "VALIDATION FAILED";
             
-            var resultBadgeRect = new XRect(50, yPosition, 200, 25);
-            gfx.DrawRectangle(new XSolidBrush(resultBgColor), resultBadgeRect);
-            gfx.DrawRectangle(new XPen(resultColor, 2), resultBadgeRect);
+            gfx.DrawRectangle(new XSolidBrush(PrimaryBlue), 
+                new XRect(50, yPosition, page.Width - 100, 3));
             
-            gfx.DrawString(resultText, fontBold, new XSolidBrush(resultColor),
-                new XRect(55, yPosition + 5, 190, 20), XStringFormats.TopLeft);
+            gfx.DrawString("Validation Result", sectionHeaderStyle, new XSolidBrush(PrimaryDark),
+                new XRect(65, yPosition + 6, page.Width - 130, 25), XStringFormats.TopLeft);
             yPosition += 40;
 
-            // Document Statistics section
-            var statsRect = new XRect(40, yPosition, page.Width - 80, 25);
-            gfx.DrawRectangle(sectionBgColor, statsRect);
-            gfx.DrawRectangle(sectionBorderColor, statsRect);
-            gfx.DrawString("DOCUMENT STATISTICS", sectionHeaderStyle, new XSolidBrush(PrimaryBlue),
-                new XRect(50, yPosition + 5, page.Width - 100, 20), XStringFormats.TopLeft);
-            yPosition += 35;
+            // Modern overall result with background gradient box
+            var resultColor = result.Success ? SuccessGreen : ErrorRed;
+            var resultBgColor = result.Success ? SuccessLight : ErrorLight;
+            var resultText = result.Success ? "Passed" : "Failed";
+            
+            // Create background gradient box for the result
+            var resultBadgeRect = new XRect(65, yPosition, 160, 35);
+            var resultBadgeBrush = new XLinearGradientBrush(
+                new XPoint(0, yPosition), new XPoint(0, yPosition + 35),
+                resultBgColor, result.Success ? XColor.FromArgb(187, 247, 208) : XColor.FromArgb(252, 165, 165));
+            gfx.DrawRectangle(resultBadgeBrush, resultBadgeRect);
+            gfx.DrawRectangle(new XPen(resultColor, 2), resultBadgeRect);
+            
+            // Add subtle highlight effect
+            var highlightRect = new XRect(67, yPosition + 2, 156, 2);
+            gfx.DrawRectangle(new XSolidBrush(XColor.FromArgb(60, 255, 255, 255)), highlightRect);
+            
+            // Center align text both horizontally and vertically within the box
+            gfx.DrawString(resultText, new XFont("Segoe UI", 14, XFontStyle.Bold), new XSolidBrush(resultColor),
+                resultBadgeRect, XStringFormats.Center);
+            yPosition += 50;
 
-            var statsItems = new[]
+            // Modern Document Statistics section
+            var statsRect = new XRect(50, yPosition, page.Width - 100, 30);
+            gfx.DrawRectangle(sectionBgBrush, statsRect);
+            gfx.DrawRectangle(sectionBorderColor, statsRect);
+            
+            gfx.DrawRectangle(new XSolidBrush(PrimaryBlue), 
+                new XRect(50, yPosition, page.Width - 100, 3));
+            
+            gfx.DrawString("Document Statistics", sectionHeaderStyle, new XSolidBrush(PrimaryDark),
+                new XRect(65, yPosition + 6, page.Width - 130, 25), XStringFormats.TopLeft);
+            yPosition += 40;
+
+            // Modern statistics with enhanced formatting
+            var statItems = new[]
             {
                 $"Page Count: {result.DocumentInfo.PageCount}",
                 $"Word Count: {result.DocumentInfo.WordCount:N0}",
                 $"Contains Handwriting: {(result.DocumentInfo.ContainsHandwriting ? "Yes" : "No")}"
             };
 
-            foreach (var item in statsItems)
+            foreach (var item in statItems)
             {
                 var itemLines = WrapText(item, 80);
                 var itemHeight = itemLines.Count * font.Height;
                 
-                DrawWrappedText(gfx, item, font, new XSolidBrush(TextDark),
-                    new XRect(50, yPosition, page.Width - 100, itemHeight), 80);
-                yPosition += (int)itemHeight + 3;
+                DrawWrappedText(gfx, item, font, new XSolidBrush(TextSecondary),
+                    new XRect(65, yPosition, page.Width - 130, itemHeight), 80);
+                yPosition += (int)itemHeight + 5;
             }
 
-            if (result.DocumentInfo.LanguageInfo.Any())
-            {
-                var langInfo = result.DocumentInfo.LanguageInfo.First();
-                var langText = $"Primary Language: {langInfo.LanguageCode} (Confidence: {(langInfo.Confidence * 100):F1}%)";
-                var langLines = WrapText(langText, 80);
-                var langHeight = langLines.Count * font.Height;
-                
-                DrawWrappedText(gfx, langText, font, new XSolidBrush(TextDark),
-                    new XRect(50, yPosition, page.Width - 100, langHeight), 80);
-                yPosition += (int)langHeight + 3;
-            }
-
+            // Add detected organization info if available
             if (!string.IsNullOrEmpty(result.DocumentInfo.DetectedOrganizationName))
             {
                 var orgText = $"Detected Organization: {result.DocumentInfo.DetectedOrganizationName}";
                 var orgLines = WrapText(orgText, 80);
                 var orgHeight = orgLines.Count * font.Height;
                 
-                DrawWrappedText(gfx, orgText, font, new XSolidBrush(TextDark),
-                    new XRect(50, yPosition, page.Width - 100, orgHeight), 80);
-                yPosition += (int)orgHeight + 3;
+                DrawWrappedText(gfx, orgText, font, new XSolidBrush(TextSecondary),
+                    new XRect(65, yPosition, page.Width - 130, orgHeight), 80);
+                yPosition += (int)orgHeight + 5;
             }
 
-            yPosition += 20;
+            yPosition += 25;
 
-            // Issues or Success section
+            // Modern Issues or Success section
             if (!result.Success)
             {
-                var issuesRect = new XRect(40, yPosition, page.Width - 80, 25);
-                gfx.DrawRectangle(new XSolidBrush(XColor.FromArgb(248, 215, 218)), issuesRect);
-                gfx.DrawRectangle(new XPen(WarningRed, 1), issuesRect);
-                gfx.DrawString("ISSUES DETECTED", sectionHeaderStyle, new XSolidBrush(WarningRed),
-                    new XRect(50, yPosition + 5, page.Width - 100, 20), XStringFormats.TopLeft);
-                yPosition += 35;
+                var issuesRect = new XRect(50, yPosition, page.Width - 100, 30);
+                var issuesBrush = new XLinearGradientBrush(
+                    new XPoint(0, yPosition), new XPoint(0, yPosition + 30),
+                    ErrorLight, XColor.FromArgb(254, 202, 202));
+                gfx.DrawRectangle(issuesBrush, issuesRect);
+                gfx.DrawRectangle(new XPen(ErrorRed, 1.5), issuesRect);
+                
+                gfx.DrawRectangle(new XSolidBrush(ErrorRed), 
+                    new XRect(50, yPosition, page.Width - 100, 3));
+                
+                gfx.DrawString("Issues Detected", sectionHeaderStyle, new XSolidBrush(ErrorRed),
+                    new XRect(65, yPosition + 6, page.Width - 130, 25), XStringFormats.TopLeft);
+                yPosition += 40;
 
                 for (int i = 0; i < result.MissingElements.Count; i++)
                 {
@@ -382,21 +455,28 @@ namespace DocumentValidator.Services
                     var issueLines = WrapText(issueText, 75);
                     var issueHeight = issueLines.Count * font.Height;
                     
-                    DrawWrappedText(gfx, issueText, font, new XSolidBrush(TextDark),
-                        new XRect(60, yPosition, page.Width - 120, issueHeight), 75);
-                    yPosition += (int)issueHeight + 3;
+                    DrawWrappedText(gfx, issueText, font, new XSolidBrush(TextPrimary),
+                        new XRect(75, yPosition, page.Width - 150, issueHeight), 75);
+                    yPosition += (int)issueHeight + 5;
                 }
 
-                yPosition += 15;
+                yPosition += 20;
 
                 if (result.SuggestedActions.Any())
                 {
-                    var actionsRect = new XRect(40, yPosition, page.Width - 80, 25);
-                    gfx.DrawRectangle(new XSolidBrush(XColor.FromArgb(255, 243, 205)), actionsRect);
-                    gfx.DrawRectangle(new XPen(XColor.FromArgb(255, 193, 7), 1), actionsRect);
-                    gfx.DrawString("SUGGESTED ACTIONS", sectionHeaderStyle, new XSolidBrush(XColor.FromArgb(133, 100, 4)),
-                        new XRect(50, yPosition + 5, page.Width - 100, 20), XStringFormats.TopLeft);
-                    yPosition += 35;
+                    var actionsRect = new XRect(50, yPosition, page.Width - 100, 30);
+                    var actionsBrush = new XLinearGradientBrush(
+                        new XPoint(0, yPosition), new XPoint(0, yPosition + 30),
+                        WarningLight, XColor.FromArgb(252, 211, 77));
+                    gfx.DrawRectangle(actionsBrush, actionsRect);
+                    gfx.DrawRectangle(new XPen(WarningOrange, 1.5), actionsRect);
+                    
+                    gfx.DrawRectangle(new XSolidBrush(WarningOrange), 
+                        new XRect(50, yPosition, page.Width - 100, 3));
+                    
+                    gfx.DrawString("Suggested Actions", sectionHeaderStyle, new XSolidBrush(XColor.FromArgb(146, 64, 14)),
+                        new XRect(65, yPosition + 6, page.Width - 130, 25), XStringFormats.TopLeft);
+                    yPosition += 40;
 
                     for (int i = 0; i < result.SuggestedActions.Count; i++)
                     {
@@ -404,107 +484,136 @@ namespace DocumentValidator.Services
                         var actionLines = WrapText(actionText, 75);
                         var actionHeight = actionLines.Count * font.Height;
                         
-                        DrawWrappedText(gfx, actionText, font, new XSolidBrush(TextDark),
-                            new XRect(60, yPosition, page.Width - 120, actionHeight), 75);
-                        yPosition += (int)actionHeight + 3;
+                        DrawWrappedText(gfx, actionText, font, new XSolidBrush(TextPrimary),
+                            new XRect(75, yPosition, page.Width - 150, actionHeight), 75);
+                        yPosition += (int)actionHeight + 5;
                     }
                 }
             }
             else
             {
-                var successRect = new XRect(40, yPosition, page.Width - 80, 40);
-                gfx.DrawRectangle(new XSolidBrush(XColor.FromArgb(212, 237, 218)), successRect);
+                var successRect = new XRect(50, yPosition, page.Width - 100, 50);
+                var successBrush = new XLinearGradientBrush(
+                    new XPoint(0, yPosition), new XPoint(0, yPosition + 50),
+                    SuccessLight, XColor.FromArgb(187, 247, 208));
+                gfx.DrawRectangle(successBrush, successRect);
                 gfx.DrawRectangle(new XPen(SuccessGreen, 2), successRect);
                 
+                // Add modern accent and highlight
+                gfx.DrawRectangle(new XSolidBrush(SuccessGreen), 
+                    new XRect(50, yPosition, page.Width - 100, 4));
+                var successHighlight = new XRect(52, yPosition + 6, page.Width - 104, 2);
+                gfx.DrawRectangle(new XSolidBrush(XColor.FromArgb(80, 255, 255, 255)), successHighlight);
+                
                 var successText = "Document validation completed successfully with no issues!";
-                DrawWrappedText(gfx, successText, fontBold, new XSolidBrush(SuccessGreen),
-                    new XRect(50, yPosition + 12, page.Width - 100, 25), 65);
-                yPosition += 50;
+                DrawWrappedText(gfx, successText, new XFont("Segoe UI", 13, XFontStyle.Bold), new XSolidBrush(SuccessGreen),
+                    new XRect(65, yPosition + 16, page.Width - 130, 30), 65);
+                yPosition += 60;
             }
 
-            // Enhanced footer
-            var footerRect = new XRect(0, page.Height - 40, page.Width, 40);
-            gfx.DrawRectangle(new XSolidBrush(XColor.FromArgb(248, 249, 250)), footerRect);
-            gfx.DrawLine(new XPen(BorderGray, 1), 0, page.Height - 40, page.Width, page.Height - 40);
+            // Modern footer with gradient background
+            var footerRect = new XRect(0, page.Height - 50, page.Width, 50);
+            var footerBrush = new XLinearGradientBrush(
+                new XPoint(0, page.Height - 50), new XPoint(0, page.Height),
+                BackgroundGray, AccentGray);
+            gfx.DrawRectangle(footerBrush, footerRect);
+            gfx.DrawLine(new XPen(BorderGray, 1.5), 0, page.Height - 50, page.Width, page.Height - 50);
             
             var footerText = $"This report was automatically generated • © {DateTime.Now.Year} Document Validator";
-            gfx.DrawString(footerText, new XFont("Arial", 9), new XSolidBrush(TextMuted),
-                new XRect(0, page.Height - 25, page.Width, 20), XStringFormats.TopCenter);
+            gfx.DrawString(footerText, new XFont("Segoe UI", 9), new XSolidBrush(TextMuted),
+                new XRect(0, page.Height - 30, page.Width, 20), XStringFormats.TopCenter);
         }
 
         private void AddSkippedDocumentsPage(XGraphics gfx, PdfPage page, List<SkippedDocument> skippedDocuments, string organizationName)
         {
-            var font = new XFont("Arial", 11);
-            var fontBold = new XFont("Arial", 12, XFontStyle.Bold);
-            var fontLarge = new XFont("Arial", 18, XFontStyle.Bold);
-            var fontMedium = new XFont("Arial", 14, XFontStyle.Bold);
+            var font = new XFont("Segoe UI", 11);
+            var fontBold = new XFont("Segoe UI", 12, XFontStyle.Bold);
+            var fontLarge = new XFont("Segoe UI", 20, XFontStyle.Bold);
+            var fontMedium = new XFont("Segoe UI", 15, XFontStyle.Bold);
 
-            var yPosition = 30;
+            var yPosition = 40;
 
-            // Enhanced header with gradient background
-            var headerRect = new XRect(0, 0, page.Width, 80);
+            // Modern header with sophisticated gradient - increased height for consistency
+            var headerRect = new XRect(0, 0, page.Width, 110); // Increased from 90 to 110
             var headerBrush = new XLinearGradientBrush(
-                new XPoint(0, 0), new XPoint(0, 80),
-                XColor.FromArgb(255, 193, 7), XColor.FromArgb(255, 235, 59));
+                new XPoint(0, 0), new XPoint(0, 110), // Updated to match new height
+                WarningOrange, XColor.FromArgb(252, 211, 77));
             gfx.DrawRectangle(headerBrush, headerRect);
 
-            gfx.DrawString("Uncategorized Documents", fontLarge, XBrushes.White,
-                new XRect(0, yPosition, page.Width, 30), XStringFormats.TopCenter);
-            yPosition += 60;
+            // Add subtle shadow
+            var shadowRect = new XRect(0, 110, page.Width, 6); // Updated Y position
+            var shadowBrush = new XLinearGradientBrush(
+                new XPoint(0, 110), new XPoint(0, 116), // Updated positions
+                XColor.FromArgb(80, 0, 0, 0), XColor.FromArgb(0, 0, 0, 0));
+            gfx.DrawRectangle(shadowBrush, shadowRect);
 
-            // Enhanced explanation section
-            var explanationRect = new XRect(40, yPosition, page.Width - 80, 50);
-            gfx.DrawRectangle(new XSolidBrush(XColor.FromArgb(255, 243, 205)), explanationRect);
-            gfx.DrawRectangle(new XPen(XColor.FromArgb(255, 193, 7), 1), explanationRect);
+            gfx.DrawString("Uncategorized Documents", fontLarge, XBrushes.White,
+                new XRect(0, yPosition, page.Width, 35), XStringFormats.TopCenter);
+            yPosition += 80; // Increased spacing to account for taller header
+
+            // Modern explanation section with card design
+            var explanationRect = new XRect(50, yPosition, page.Width - 100, 60);
+            var explanationBrush = new XLinearGradientBrush(
+                new XPoint(0, yPosition), new XPoint(0, yPosition + 60),
+                WarningLight, XColor.FromArgb(252, 211, 77));
+            gfx.DrawRectangle(explanationBrush, explanationRect);
+            gfx.DrawRectangle(new XPen(WarningOrange, 2), explanationRect);
+
+            // Add modern accent line
+            gfx.DrawRectangle(new XSolidBrush(WarningOrange), 
+                new XRect(50, yPosition, page.Width - 100, 4));
 
             var explanationText = "The following documents could not be automatically classified. These documents require manual review to determine their type and verify compliance.";
-            DrawWrappedText(gfx, explanationText, font, new XSolidBrush(XColor.FromArgb(133, 100, 4)),
-                new XRect(50, yPosition + 8, page.Width - 100, 40), 85);
-            yPosition += 70;
+            DrawWrappedText(gfx, explanationText, font, new XSolidBrush(XColor.FromArgb(146, 64, 14)),
+                new XRect(65, yPosition + 15, page.Width - 130, 45), 85);
+            yPosition += 80;
 
-            // Calculate table layout
-            var pageWidth = page.Width - 80;
-            var startX = 40;
+            // Enhanced table layout with modern proportions
+            var pageWidth = page.Width - 100;
+            var startX = 50;
 
             var columnWidths = new double[]
             {
-                0.70 * pageWidth, // Document Name - increased from 65%
-                0.30 * pageWidth  // Reason Skipped - decreased from 35% but with better wrapping
+                0.70 * pageWidth, // Document Name
+                0.30 * pageWidth  // Reason Skipped
             };
 
             var headers = new[] { "Document Name", "Reason Skipped" };
 
-            // Enhanced table header
-            var headerTableRect = new XRect(startX, yPosition, pageWidth, 25);
+            // Modern table header with sophisticated styling
+            var headerTableRect = new XRect(startX, yPosition, pageWidth, 35);
             var tableBrush = new XLinearGradientBrush(
-                new XPoint(0, yPosition), new XPoint(0, yPosition + 25),
-                XColor.FromArgb(255, 193, 7), XColor.FromArgb(255, 235, 59));
+                new XPoint(0, yPosition), new XPoint(0, yPosition + 35),
+                WarningOrange, XColor.FromArgb(252, 211, 77));
             gfx.DrawRectangle(tableBrush, headerTableRect);
-            gfx.DrawRectangle(new XPen(BorderGray, 1.5), headerTableRect);
+            
+            // Subtle top border for premium look
+            gfx.DrawRectangle(new XPen(XColor.FromArgb(217, 119, 6), 3), 
+                new XRect(startX, yPosition, pageWidth, 3));
 
             var x = startX;
             for (int i = 0; i < headers.Length; i++)
             {
                 if (i > 0)
                 {
-                    gfx.DrawLine(new XPen(XColor.FromArgb(255, 255, 255, 150), 1), 
-                        x, yPosition + 3, x, yPosition + 22);
+                    gfx.DrawLine(new XPen(XColor.FromArgb(150, 255, 255, 255), 1.5), 
+                        x, yPosition + 5, x, yPosition + 30);
                 }
                 
-                gfx.DrawString(headers[i], new XFont("Arial", 11, XFontStyle.Bold), XBrushes.White,
-                    new XRect(x + 8, yPosition + 6, columnWidths[i] - 16, 15), XStringFormats.TopLeft);
+                gfx.DrawString(headers[i], new XFont("Segoe UI", 12, XFontStyle.Bold), XBrushes.White,
+                    new XRect(x + 12, yPosition + 10, columnWidths[i] - 24, 20), XStringFormats.TopLeft);
                 x += (int)columnWidths[i];
             }
-            yPosition += 25;
+            yPosition += 35;
 
-            // Enhanced table rows
+            // Modern table rows with enhanced styling
             for (int index = 0; index < skippedDocuments.Count; index++)
             {
                 var document = skippedDocuments[index];
                 
                 var rowHeight = CalculateRequiredRowHeight(document.FileName, document.Reason, 55, 35, font.Height);
 
-                // Enhanced alternating row colors
+                // Modern alternating row colors with subtle gradients
                 var rowColor1 = index % 2 == 0 ? XColor.FromArgb(254, 252, 246) : XColors.White;
                 var rowColor2 = index % 2 == 0 ? XColor.FromArgb(252, 248, 227) : XColor.FromArgb(254, 254, 254);
                 
@@ -517,17 +626,17 @@ namespace DocumentValidator.Services
 
                 x = startX;
 
-                // Document Name column
-                DrawWrappedText(gfx, document.FileName, font, new XSolidBrush(TextDark),
-                    new XRect(x + 8, yPosition + 6, columnWidths[0] - 16, rowHeight - 12), 55);
+                // Document Name column with modern styling
+                DrawWrappedText(gfx, document.FileName, font, new XSolidBrush(TextPrimary),
+                    new XRect(x + 12, yPosition + 8, columnWidths[0] - 24, rowHeight - 16), 55);
                 
                 gfx.DrawLine(new XPen(BorderGray, 0.5), 
                     x + (int)columnWidths[0], yPosition, x + (int)columnWidths[0], yPosition + rowHeight);
                 x += (int)columnWidths[0];
 
-                // Reason column
-                DrawWrappedText(gfx, document.Reason, font, new XSolidBrush(XColor.FromArgb(133, 100, 4)),
-                    new XRect(x + 8, yPosition + 6, columnWidths[1] - 16, rowHeight - 12), 35);
+                // Reason column with modern styling
+                DrawWrappedText(gfx, document.Reason, font, new XSolidBrush(XColor.FromArgb(146, 64, 14)),
+                    new XRect(x + 12, yPosition + 8, columnWidths[1] - 24, rowHeight - 16), 35);
 
                 yPosition += rowHeight;
 
@@ -538,15 +647,37 @@ namespace DocumentValidator.Services
                 }
             }
 
-            // Enhanced note section
-            yPosition += 25;
-            var noteRect = new XRect(40, yPosition, page.Width - 80, 50);
-            gfx.DrawRectangle(new XSolidBrush(XColor.FromArgb(248, 215, 218)), noteRect);
-            gfx.DrawRectangle(new XPen(WarningRed, 1), noteRect);
-            
+            // Modern note section with enhanced styling
+            yPosition += 30;
+            var noteRect = new XRect(50, yPosition, page.Width - 100, 60);
+            var noteBrush = new XLinearGradientBrush(
+                new XPoint(0, yPosition), new XPoint(0, yPosition + 60),
+                XColor.FromArgb(254, 240, 138), XColor.FromArgb(253, 224, 71));
+            gfx.DrawRectangle(noteBrush, noteRect);
+            gfx.DrawRectangle(new XPen(WarningOrange, 2), noteRect);
+
+            // Add modern accent and highlight
+            gfx.DrawRectangle(new XSolidBrush(WarningOrange), 
+                new XRect(50, yPosition, page.Width - 100, 4));
+            var noteHighlight = new XRect(52, yPosition + 6, page.Width - 104, 2);
+            gfx.DrawRectangle(new XSolidBrush(XColor.FromArgb(60, 255, 255, 255)), noteHighlight);
+
             var noteText = "Note: These documents should be manually reviewed to determine their document type and verify compliance requirements.";
-            DrawWrappedText(gfx, noteText, fontBold, new XSolidBrush(WarningRed),
-                new XRect(50, yPosition + 8, page.Width - 100, 40), 80);
+            DrawWrappedText(gfx, noteText, new XFont("Segoe UI", 12, XFontStyle.Bold), 
+                new XSolidBrush(XColor.FromArgb(146, 64, 14)),
+                new XRect(65, yPosition + 16, page.Width - 130, 40), 75);
+
+            // Modern footer with gradient background
+            var footerRect = new XRect(0, page.Height - 50, page.Width, 50);
+            var footerBrush = new XLinearGradientBrush(
+                new XPoint(0, page.Height - 50), new XPoint(0, page.Height),
+                BackgroundGray, AccentGray);
+            gfx.DrawRectangle(footerBrush, footerRect);
+            gfx.DrawLine(new XPen(BorderGray, 1.5), 0, page.Height - 50, page.Width, page.Height - 50);
+            
+            var footerText = $"This report was automatically generated • © {DateTime.Now.Year} Document Validator";
+            gfx.DrawString(footerText, new XFont("Segoe UI", 9), new XSolidBrush(TextMuted),
+                new XRect(0, page.Height - 30, page.Width, 20), XStringFormats.TopCenter);
         }
 
         private string FormatDocumentType(string documentType)
@@ -640,6 +771,64 @@ namespace DocumentValidator.Services
             // Ensure minimum height for readability, with better spacing
             var calculatedHeight = (int)(maxLines * lineHeight + 12); // Increased padding from 10 to 12
             return Math.Max(calculatedHeight, 40); // Increased minimum height from 35 to 40
+        }
+
+        private List<string> WrapTextToWidth(XGraphics gfx, string text, XFont font, double maxWidth)
+        {
+            if (string.IsNullOrEmpty(text))
+                return new List<string> { "" };
+
+            var words = text.Split(' ');
+            var lines = new List<string>();
+            var currentLine = "";
+
+            foreach (var word in words)
+            {
+                if (string.IsNullOrEmpty(currentLine))
+                {
+                    // First word on the line
+                    currentLine = word;
+                }
+                else 
+                {
+                    var potentialLine = currentLine + " " + word;
+                    var textSize = gfx.MeasureString(potentialLine, font);
+                    
+                    // If adding this word would exceed the width
+                    if (textSize.Width > maxWidth)
+                    {
+                        // If current line is not empty, finish it and start new line
+                        lines.Add(currentLine);
+                        currentLine = word;
+                    }
+                    else
+                    {
+                        // Word fits, add it to current line
+                        currentLine = potentialLine;
+                    }
+                }
+            }
+
+            // Add the last line if it has content
+            if (!string.IsNullOrEmpty(currentLine))
+            {
+                lines.Add(currentLine);
+            }
+
+            return lines.Any() ? lines : new List<string> { "" };
+        }
+
+        private void DrawWrappedTextToFit(XGraphics gfx, string text, XFont font, XBrush brush, XRect rect)
+        {
+            var lines = WrapTextToWidth(gfx, text, font, rect.Width);
+            var lineHeight = font.Height;
+            var currentY = rect.Y;
+
+            foreach (var line in lines)
+            {
+                gfx.DrawString(line, font, brush, new XRect(rect.X, currentY, rect.Width, lineHeight), XStringFormats.TopLeft);
+                currentY += lineHeight;
+            }
         }
     }
 } 
