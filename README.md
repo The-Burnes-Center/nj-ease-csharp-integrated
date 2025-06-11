@@ -1,232 +1,300 @@
-# Azure Function Document Validator (C#)
+# 📌 AI Document Validator – Azure Functions (C#)
 
-This project provides an Azure Function written in C# that validates documents using Azure AI Document Intelligence and generates PDF summaries of validation results. The function is designed to be triggered by Power Automate flows and integrated with Dynamics 365 CRM.
+> Serverless backend that validates New Jersey business documents with Azure AI Document Intelligence and generates beautiful PDF summary reports – ready for Power Automate or Dynamics 365 workflows.
 
-## Overview
+---
 
-The Document Validator Azure Function processes documents sent from a Power Automate flow and validates them based on document type. The function:
+## 🧠 What It Does
 
-1. Receives a JSON payload containing organization details and document files (base64-encoded)
-2. Analyzes each document using Azure AI Document Intelligence
-3. Applies validation rules specific to each document type
-4. Generates a PDF summary report for each document
-5. Returns validation results and PDF reports as base64-encoded strings
+- 🚀 **Automatic document analysis & classification**  
+  Automatically detects and classifies the business document type (Tax Clearance, Certificate of Formation, Bylaws, etc.) using Azure Document Intelligence.
+- 🔍 **Context-aware validation rules**  
+  Checks signatures, dates (< 6 months), organization names, keywords, and more – each rule set is tuned per document type.
+- 📄 **Professional PDF reports**
+  Uses PdfSharpCore to create a consolidated report and individual summaries, complete with color-coded status badges.
+- ⚡️ **Single HTTP endpoint**  
+  POST `/api/validate-documents` accepts a JSON payload with one or many base64 files and returns validation results + PDFs.
+- 🌐 **Made for Power Automate & Dynamics 365**  
+  Secure, key-protected endpoint that plugs directly into your low-code flows.
 
-## Prerequisites
+---
 
-- [.NET 6.0 SDK](https://dotnet.microsoft.com/download/dotnet/6.0)
-- [Azure Functions Core Tools](https://learn.microsoft.com/en-us/azure/azure-functions/functions-run-local)
-- [Azure Account](https://azure.microsoft.com/free/) with an active subscription
-- [Azure Form Recognizer/Document Intelligence](https://azure.microsoft.com/services/form-recognizer/) resource
-- [Power Automate](https://flow.microsoft.com/) access for trigger setup
+## 🧱 Architecture
 
-## Project Structure
+![System Architecture](./architecture.png)
 
+Key design points:
+
+1. **Isolated .NET 8 worker** – better cold-start and package management.
+2. **Dependency Injection** – services are singletons, stateless, and thread-safe.
+3. **Parallel processing** – documents are analyzed concurrently for speed.
+
+---
+
+## 🧰 Tech Stack
+
+| Layer          | Tools & Frameworks                                             |
+|----------------|----------------------------------------------------------------|
+| **Function**   | Azure Functions Isolated (.NET 8), Newtonsoft.Json             |
+| **AI/ML**      | Azure AI Document Intelligence (Form Recognizer)               |
+| **PDF**        | PdfSharpCore                                                   |
+| **Testing**    | xUnit, `Tests/` console harness                                |
+| **Dev Ops**    | GitHub Actions (example), Azure CLI / Functions Core Tools     |
+
+---
+
+## 🧪 Setup
+
+### 1. Prerequisites
+
+- [.NET 8 SDK](https://dotnet.microsoft.com/download/dotnet/8.0)
+- [Azure Functions Core Tools](https://learn.microsoft.com/azure/azure-functions/functions-run-local)
+- An **Azure Document Intelligence** (Form Recognizer) resource & key
+
+### 1.1 Provision Azure AI Document Intelligence
+
+> Skip this if you already have a Document Intelligence instance.
+
+#### Option A — Azure Console
+
+1. In the portal, click **Create a resource** → search "Document Intelligence" (formerly *Form Recognizer*).
+2. Click **Create** and fill in:
+   • Subscription & Resource Group  
+   • **Region** close to your users  
+   • **Name** (e.g. `doc-intel-<initials>`)  
+   • **Pricing Tier**: *S0* (paid) or *F0* (free trial, limited quota).
+3. Review + Create, then **Go to resource**.
+4. Under **Keys and Endpoint**, copy **Endpoint** and **Key 1** – paste these into `DI_ENDPOINT` / `DI_KEY` later.
+
+#### Option B — Azure CLI (Automation)
+```bash
+FR_NAME=ai-doc-validator-$RANDOM   # globally unique
+RG=rg-ai-doc-val            # reuse or create
+LOCATION=eastus
+
+# Create the cognitive services account (Form Recognizer kind)
+az cognitiveservices account create \
+  --name $FR_NAME \
+  --resource-group $RG \
+  --kind FormRecognizer \
+  --sku S0 \
+  --location $LOCATION \
+  --yes
+
+# Fetch endpoint & key
+az cognitiveservices account show \
+  --name $FR_NAME \
+  --resource-group $RG \
+  --query "properties.endpoint" -o tsv
+
+az cognitiveservices account keys list \
+  --name $FR_NAME \
+  --resource-group $RG \
+  --query "key1" -o tsv
 ```
-.
-├── Models/
-│   ├── ValidationRequest.cs         # Request data models
-│   └── ValidationResponse.cs        # Response data models
-├── Services/
-│   ├── ConfigurationService.cs      # Configuration management
-│   ├── DocumentValidatorService.cs  # Document validation logic
-│   └── PdfGeneratorService.cs       # PDF report generation
-├── Functions/
-│   └── ValidateDocumentsFunction.cs # Azure Function implementation
-├── Tests/
-│   ├── TestFunction.cs              # Test runner
-│   └── testPayload.json             # Sample input for testing
-├── Program.cs                       # Application entry point
-├── DocumentValidator.csproj         # Project file
-├── host.json                        # Function app configuration
-├── local.settings.json              # Local environment settings
-└── README.md                        # This file
+
+Paste the returned values into `local.settings.json` (for local dev) **or** into your Function App's **Configuration → Application settings** once deployed.
+
+### 2. Clone & restore
+
+```bash
+# Clone
+$ git clone https://github.com/kaushik-manivannan/ai-doc-validator-csharp.git
+$ cd ai-doc-validator-csharp
+
+# Install C# dependencies
+$ dotnet restore
 ```
 
-## Setup
+### 3. Configure secrets
 
-1. Clone this repository:
-   ```
-   git clone <repository-url>
-   cd document-validator-azure-function-csharp
-   ```
+Create or edit `local.settings.json`:
 
-2. Install dependencies:
-   ```
-   dotnet restore
-   ```
+```json
+{
+  "IsEncrypted": false,
+  "Values": {
+    "AzureWebJobsStorage": "UseDevelopmentStorage=true",
+    "FUNCTIONS_WORKER_RUNTIME": "dotnet-isolated",
+    "DI_ENDPOINT": "https://<your-form-recognizer>.cognitiveservices.azure.com/",
+    "DI_KEY": "<form-recognizer-key>"
+  }
+}
+```
 
-3. Configure settings:
+> **Tip:** `local.settings.json` is ignored by Git, so your secrets stay local.
 
-   Edit `local.settings.json` with your Azure Document Intelligence credentials:
+### 4. Run locally
+
+```bash
+# start the Azure Function runtime
+$ func start
+```
+
+Test with Postman:
+
+1. Create a new POST request to `http://localhost:7071/api/validate-documents`
+
+2. Set Headers:
+   - Key: `Content-Type`
+   - Value: `application/json`
+
+3. In the Body tab:
+   - Select "raw"
+   - Choose "JSON" format
+   - Paste the test payload (from `Tests/testPayload.json`):
+
    ```json
    {
-     "IsEncrypted": false,
-     "Values": {
-       "AzureWebJobsStorage": "UseDevelopmentStorage=true",
-       "FUNCTIONS_WORKER_RUNTIME": "dotnet-isolated",
-       "DI_ENDPOINT": "your-document-intelligence-endpoint",
-       "DI_KEY": "your-document-intelligence-key"
-     }
-   }
-   ```
-
-## Local Testing
-
-1. Create test documents and update `Tests/testPayload.json` as needed.
-
-2. Run the test:
-   ```
-   dotnet run --project Tests/TestFunction.cs
-   ```
-
-3. Or run the Azure Function locally:
-   ```
-   func start
-   ```
-
-4. Review generated PDF reports in the `Tests/output` directory.
-
-## Deployment to Azure
-
-1. Build the project:
-   ```
-   dotnet build
-   ```
-
-2. Publish the function to Azure:
-   ```
-   func azure functionapp publish <your-function-app-name>
-   ```
-
-3. Configure application settings in the Azure portal:
-   - DI_ENDPOINT
-   - DI_KEY 
-
-## Power Automate Integration
-
-1. Create a Power Automate flow that triggers your Azure Function.
-
-2. Configure the HTTP action to send JSON payload to the function endpoint:
-   ```
-   {
-     "organizationname": "Example Corporation LLC",
+     "organizationname": "Example Corp LLC", 
      "FEIN": "123456789",
      "files": [
        {
-         "FileName": "Document1.pdf",
-         "FileContentBase64": "<base64-encoded-content>"
-       },
-       ...
+         "FileName": "TaxClearance.pdf",
+         "FileContentBase64": "<your-base64-encoded-pdf>"
+       }
      ]
    }
    ```
 
-3. Process the function response in your flow to:
-   - Parse validation results
-   - Save generated PDF reports
-   - Update Dynamics 365 CRM records
+The API will return a base64-encoded PDF report in the response. When using the test harness directly, PDF reports are written to the `Tests/output` directory.
 
-## Input Format
+---
 
-The function expects a JSON object with the following structure:
+## 🚀 Deploy to Azure
+
+### Option A — VS Code Extension (Recommended for first-timers)
+
+1. Install the **Azure Functions** extension in VS Code (plus **Azure Account** if you haven't already).
+2. Sign in to Azure: press `F1` (or `⌘⇧P`) and run `Azure: Sign In`.
+3. Open this folder in VS Code, then build once:
+
+   ```bash
+   dotnet build -c Release
+   ```
+
+4. In the **AZURE FUNCTIONS** side bar, click **Deploy to Function App…**.
+5. When prompted:
+   • Select **Create new Function App**  
+   • Enter a globally-unique name (e.g. `ai-doc-validator-<your-initials>`)  
+   • Choose **.NET 8 Isolated** runtime & **Consumption** plan  
+   • Pick your desired region.
+6. Wait for the deployment to finish (status bar). VS Code will ask to upload your `local.settings.json` as **Application Settings**—choose **Yes**.
+7. In the Azure portal, add the secrets it couldn't copy automatically:
+   • `DI_ENDPOINT`  
+   • `DI_KEY`
+8. Copy the function URL (right-click **ValidateDocuments** > **Copy Function URL**) and test it with Postman or curl.
+
+### Option B — Azure CLI / Core Tools
+
+```bash
+# ------ vars ------
+APP_NAME=ai-doc-val-$RANDOM   # must be globally unique
+RG=rg-ai-doc-val
+LOCATION=eastus
+# ------------------
+
+# 1) Resource group
+az group create --name $RG --location $LOCATION
+
+# 2) Function App on Consumption (.NET 8 isolated)
+az functionapp create \
+  --name $APP_NAME \
+  --resource-group $RG \
+  --consumption-plan-location $LOCATION \
+  --functions-version 4 \
+  --runtime dotnet-isolated
+
+# 3) Deploy your code
+func azure functionapp publish $APP_NAME --csharp
+
+# 4) Configure secrets
+az functionapp config appsettings set \
+  --name $APP_NAME \
+  --resource-group $RG \
+  --settings DI_ENDPOINT="https://<your-form-recognizer>.cognitiveservices.azure.com/" DI_KEY="<key>"
+
+# 5) Grab the default key (needed for the query-string ?code=…)
+az functionapp function keys list \
+  --resource-group $RG \
+  --name $APP_NAME \
+  --function-name ValidateDocuments \
+  --query "default"
+```
+
+> The command above prints the function key. Combine it with the host name:  
+> `https://$APP_NAME.azurewebsites.net/api/validate-documents?code=<key>`
+
+---
+
+## 🤖 Power Automate Integration
+
+1. Add an **HTTP** action – method `POST`, URL `https://<func-app>.azurewebsites.net/api/validate-documents?code=<function-key>`.
+
+2. Build the body using JSON:
 
 ```json
 {
-  "organizationname": "Organization Name",
-  "FEIN": "Tax ID",
+  "organizationname": "Example Corp LLC",
+  "FEIN": "123456789",
   "files": [
     {
-      "FileName": "document.pdf",
-      "FileContentBase64": "base64-encoded-content"
+      "FileName": "TaxClearance.pdf",
+      "FileContentBase64": "<base64>"
     }
   ]
 }
 ```
 
-## Output Format
+3. Parse the response to save PDFs, update Dynamics 365 records, or notify users.
 
-The function returns a JSON object with the following structure:
+---
 
-```json
-{
-  "organizationName": "Organization Name",
-  "fein": "Tax ID",
-  "results": [
-    {
-      "fileName": "document.pdf",
-      "documentType": "tax-clearance-online",
-      "success": true,
-      "missingElements": [],
-      "suggestedActions": [],
-      "documentInfo": {
-        "pageCount": 1,
-        "wordCount": 100,
-        "languageInfo": [...],
-        "containsHandwriting": false,
-        "documentType": "tax-clearance-online",
-        "detectedOrganizationName": "Organization Name"
-      }
-    }
-  ],
-  "skippedDocuments": [],
-  "consolidatedReportBase64": "base64-encoded-pdf"
-}
-```
+## 🧠 Core Modules
 
-## Supported Document Types
+| File / Directory                     | Responsibility                                                    |
+|--------------------------------------|-------------------------------------------------------------------|
+| `Functions/ValidateDocumentsFunction.cs` | HTTP trigger, request validation, orchestration               |
+| `Services/DocumentValidatorService.cs`   | Document type detection & rule-based validation               |
+| `Services/PdfGeneratorService.cs`        | Creates consolidated & per-document PDF reports               |
+| `Services/ConfigurationService.cs`       | Loads environment variables & secrets (local + Azure)         |
+| `Models/ValidationRequest.cs`            | Strongly-typed input contract                                 |
+| `Models/ValidationResponse.cs`           | Strongly-typed output contract                                |
+| `Tests/`                                 | Console harness + sample payloads for quick local testing     |
 
-The function supports validation for the following document types:
+---
 
-- `tax-clearance-online` - Tax Clearance Certificate (Online)
-- `tax-clearance-manual` - Tax Clearance Certificate (Manual)
-- `cert-alternative-name` - Certificate of Alternative Name
-- `cert-trade-name` - Certificate of Trade Name
-- `cert-formation` - Certificate of Formation
-- `cert-good-standing-long` - Certificate of Good Standing (Long Form)
-- `cert-good-standing-short` - Certificate of Good Standing (Short Form)
-- `operating-agreement` - Operating Agreement
-- `cert-incorporation` - Certificate of Incorporation
-- `irs-determination` - IRS Determination Letter
-- `bylaws` - Corporate Bylaws
-- `cert-authority` - Certificate of Authority
+## 🛡️ Security & Privacy
 
-## Development
+- No documents are persisted – everything is processed **in-memory**.
+- HTTPS enforced on Azure; local dev uses `host.json` defaults.
+- Secrets live in Azure **App Settings** or `local.settings.json` – never hard-coded.
 
-### Building the Project
+---
 
-```bash
-dotnet build
-```
+## 📦 Roadmap
 
-### Running Tests
+- [ ] Modularize validation rules for easier extension
 
-```bash
-dotnet run --project Tests/TestFunction.cs
-```
+---
 
-### Running Locally
+## 🤝 Contributing
 
-```bash
-func start
-```
+Contributions are welcome! Please open an issue to discuss your idea or bug, then submit a PR.
 
-## Troubleshooting
+1. Fork the repo & create your branch (`git checkout -b feature/my-feature`).
+2. Commit your changes (`git commit -am 'feat: add my feature'`).
+3. Push to the branch (`git push origin feature/my-feature`).
+4. Open a Pull Request.
 
-- **Missing environment variables**: Check that DI_ENDPOINT and DI_KEY are properly configured.
-- **Document analysis errors**: Verify that document files are valid PDFs or images.
-- **Validation failures**: Check the validation logic for specific document types in `DocumentValidatorService.cs`.
-- **PDF generation issues**: Ensure PdfSharpCore dependencies are properly installed.
+---
 
-## Migration from Node.js
+## 📄 License
 
-This C# version maintains the same functionality as the original Node.js implementation:
+MIT © 2024 – see [`LICENSE`](./LICENSE) for details.
 
-- All document validation logic has been preserved
-- PDF generation produces identical reports
-- API interface remains unchanged
-- Configuration and deployment process is similar
+---
 
-## License
+## 👥 Authors & Acknowledgements
 
-This project is licensed under the MIT License.
+Built by **Kaushik Manivannan & Aarushi Thejaswi** for the **New Jersey Economic Development Authority**.
