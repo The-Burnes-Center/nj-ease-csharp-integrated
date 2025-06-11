@@ -1,21 +1,16 @@
 # 📌 AI Document Validator – Azure Functions (C#)
 
-> Serverless backend that validates New Jersey business documents with Azure AI Document Intelligence and generates beautiful PDF summary reports – ready for Power Automate or Dynamics 365 workflows.
+> Serverless backend that validates New Jersey business documents with Azure AI Document Intelligence and generates beautiful PDF summary reports to accelerate incentive eligibility checks for the New Jersey Economic Development Authority (NJEDA) – ready for Power Automate or Dynamics 365 workflows.
 
 ---
 
 ## 🧠 What It Does
 
-- 🚀 **Automatic document analysis & classification**  
-  Automatically detects and classifies the business document type (Tax Clearance, Certificate of Formation, Bylaws, etc.) using Azure Document Intelligence.
-- 🔍 **Context-aware validation rules**  
-  Checks signatures, dates (< 6 months), organization names, keywords, and more – each rule set is tuned per document type.
-- 📄 **Professional PDF reports**
-  Uses PdfSharpCore to create a consolidated report and individual summaries, complete with color-coded status badges.
-- ⚡️ **Single HTTP endpoint**  
-  POST `/api/validate-documents` accepts a JSON payload with one or many base64 files and returns validation results + PDFs.
-- 🌐 **Made for Power Automate & Dynamics 365**  
-  Secure, key-protected endpoint that plugs directly into your low-code flows.
+- 🚀 **Automatic Document Analysis & Classification** - Automatically detects and classifies the business document type (Tax Clearance, Certificate of Formation, Bylaws, etc.) using Azure AI Document Intelligence.
+- 🔍 **Context-Aware Validation Rules** - Checks signatures, dates, organization names, keywords, and more – each rule set is tuned per document type.
+- 📄 **Professional PDF Reports** - Uses PdfSharpCore to create a consolidated report and individual summaries, complete with color-coded status badges.
+- ⚡️ **Single HTTP Endpoint** - POST `/api/validate-documents` accepts a JSON payload with one or many base64 files and returns validation results + PDF.
+- 🌐 **Made for Power Automate & Dynamics 365** - Secure, key-protected endpoint that plugs directly into your low-code flows.
 
 ---
 
@@ -23,11 +18,11 @@
 
 ![System Architecture](./architecture.png)
 
-Key design points:
+Key Design Points:
 
 1. **Isolated .NET 8 worker** – better cold-start and package management.
 2. **Dependency Injection** – services are singletons, stateless, and thread-safe.
-3. **Parallel processing** – documents are analyzed concurrently for speed.
+3. **Parallel Processing** – documents are analyzed concurrently for speed.
 
 ---
 
@@ -67,6 +62,7 @@ Key design points:
 4. Under **Keys and Endpoint**, copy **Endpoint** and **Key 1** – paste these into `DI_ENDPOINT` / `DI_KEY` later.
 
 #### Option B — Azure CLI (Automation)
+
 ```bash
 FR_NAME=ai-doc-validator-$RANDOM   # globally unique
 RG=rg-ai-doc-val            # reuse or create
