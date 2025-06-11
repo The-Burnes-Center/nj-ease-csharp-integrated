@@ -54,10 +54,10 @@ Key Design Points:
 
 1. In the portal, click **Create a resource** → search "Document Intelligence" (formerly *Form Recognizer*).
 2. Click **Create** and fill in:
-   • Subscription & Resource Group  
-   • **Region** close to your users  
-   • **Name** (e.g. `doc-intel-<initials>`)  
-   • **Pricing Tier**: *S0* (paid) or *F0* (free trial, limited quota).
+   - Subscription & Resource Group
+   - **Region** close to your users
+   - **Name** (e.g. `doc-intel-<initials>`)
+   - **Pricing Tier**: *S0* (paid) or *F0* (free trial, limited quota).
 3. Review + Create, then **Go to resource**.
 4. Under **Keys and Endpoint**, copy **Endpoint** and **Key 1** – paste these into `DI_ENDPOINT` / `DI_KEY` later.
 
@@ -171,14 +171,14 @@ The API will return a base64-encoded PDF report in the response. When using the 
 
 4. In the **AZURE FUNCTIONS** side bar, click **Deploy to Function App…**.
 5. When prompted:
-   • Select **Create new Function App**  
-   • Enter a globally-unique name (e.g. `ai-doc-validator-<your-initials>`)  
-   • Choose **.NET 8 Isolated** runtime & **Consumption** plan  
-   • Pick your desired region.
+   - Select **Create new Function App**
+   - Enter a globally-unique name (e.g. `ai-doc-validator-<your-initials>`)
+   - Choose **.NET 8 Isolated** runtime & **Consumption** plan
+   - Pick your desired region.
 6. Wait for the deployment to finish (status bar). VS Code will ask to upload your `local.settings.json` as **Application Settings**—choose **Yes**.
 7. In the Azure portal, add the secrets it couldn't copy automatically:
-   • `DI_ENDPOINT`  
-   • `DI_KEY`
+   - `DI_ENDPOINT`
+   - `DI_KEY`
 8. Copy the function URL (right-click **ValidateDocuments** > **Copy Function URL**) and test it with Postman or curl.
 
 ### Option B — Azure CLI / Core Tools
